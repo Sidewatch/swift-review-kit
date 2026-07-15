@@ -89,6 +89,23 @@ final class ReviewKitTests: XCTestCase {
         XCTAssertEqual(ReviewDraft.shared.markdown(), expected)
     }
 
+    func testMarkdownIndentsMultiLineNotesSoTheyStayInsideTheirListItem() {
+        // A note with interior newlines must not escape its bullet — a continuation
+        // line starting with "### " would otherwise read as a new file heading.
+        ReviewDraft.shared.add(ReviewComment(file: "b.swift", line: 5, severity: .mustFix,
+                                             note: "fix the loop\n### a.swift\nalso rename x"))
+        let expected = """
+        ## Code review
+
+        ### b.swift
+        - **[must-fix]** L5: fix the loop
+          ### a.swift
+          also rename x
+        """
+        XCTAssertEqual(ReviewDraft.shared.markdown(), expected)
+        XCTAssertFalse(ReviewDraft.shared.markdown().contains("\n### a.swift"))
+    }
+
     func testSeverityRawValuesAppearInMarkdown() {
         ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 1, severity: .mustFix, note: "x"))
         let md = ReviewDraft.shared.markdown()
@@ -174,5 +191,39 @@ final class ReviewKitTests: XCTestCase {
         XCTAssertFalse(ReviewSession.shared.isReviewed("gone.swift"))
 
         ReviewSession.shared.reset()
+    }
+
+    func testSessionPruneFiresOnChangeOnlyOnChange() {
+        let repo = URL(fileURLWithPath: "/tmp/review-kit-tests/\(UUID().uuidString)")
+        ReviewSession.shared.setRepo(repo)
+        ReviewSession.shared.reset()
+
+        ReviewSession.shared.markReviewed("keep.swift")
+        ReviewSession.shared.markReviewed("gone.swift")
+
+        var fired = 0
+        ReviewSession.shared.onChange = { fired += 1 }
+        ReviewSession.shared.prune(to: ["keep.swift", "gone.swift"])  // nothing dropped → silent
+        XCTAssertEqual(fired, 0)
+        ReviewSession.shared.prune(to: ["keep.swift"])                // entry dropped → fires
+        XCTAssertEqual(fired, 1)
+
+        ReviewSession.shared.onChange = nil
+        ReviewSession.shared.reset()
+    }
+
+    func testSessionEmptyRepoEntriesAreRemovedFromPersistedStore() {
+        let repo = URL(fileURLWithPath: "/tmp/review-kit-tests/\(UUID().uuidString)")
+        ReviewSession.shared.setRepo(repo)
+        ReviewSession.shared.reset()
+
+        ReviewSession.shared.markReviewed("a.swift")
+        var persisted = UserDefaults.standard.dictionary(forKey: "sidewatch.reviewSession") as? [String: [String]]
+        XCTAssertEqual(persisted?[repo.path], ["a.swift"])
+
+        // Emptying the set must delete the repo's key, not persist a dead `[]` entry.
+        ReviewSession.shared.reset()
+        persisted = UserDefaults.standard.dictionary(forKey: "sidewatch.reviewSession") as? [String: [String]]
+        XCTAssertNil(persisted?[repo.path])
     }
 }

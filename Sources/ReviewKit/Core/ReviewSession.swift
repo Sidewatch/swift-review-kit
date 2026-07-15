@@ -31,7 +31,16 @@ public final class ReviewSession {
 
     private var reviewed: Set<String> {
         get { reviewedByRepo[repoKey] ?? [] }
-        set { reviewedByRepo[repoKey] = newValue; save() }
+        set {
+            // Drop empty entries so the persisted dictionary doesn't accumulate
+            // a dead key for every repo ever opened.
+            if newValue.isEmpty {
+                reviewedByRepo.removeValue(forKey: repoKey)
+            } else {
+                reviewedByRepo[repoKey] = newValue
+            }
+            save()
+        }
     }
 
     /// Whether `path` has been marked reviewed in the current repo.
@@ -65,10 +74,13 @@ public final class ReviewSession {
     public func reviewedCount(in paths: [String]) -> Int { paths.filter { reviewed.contains($0) }.count }
 
     /// Drop reviewed entries no longer present in the change set (a file that reverted
-    /// to unchanged shouldn't linger as "reviewed").
+    /// to unchanged shouldn't linger as "reviewed"), notifying ``onChange`` only on a change.
     public func prune(to paths: Set<String>) {
         let r = reviewed.intersection(paths)
-        if r != reviewed { reviewed = r }
+        if r != reviewed {
+            reviewed = r
+            onChange?()
+        }
     }
 
     private func save() {

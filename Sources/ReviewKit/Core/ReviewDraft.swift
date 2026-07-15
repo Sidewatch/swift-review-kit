@@ -47,7 +47,10 @@ public final class ReviewDraft {
         for file in byFile.keys.sorted() {
             out += "### \(file)\n"
             for c in byFile[file]!.sorted(by: { $0.line < $1.line }) {
-                out += "- **[\(c.severity.rawValue)]** L\(c.line): \(c.note)\n"
+                // Indent continuation lines so a multi-line note stays inside its
+                // list item instead of escaping into a sibling bullet or file heading.
+                let note = c.note.replacingOccurrences(of: "\n", with: "\n  ")
+                out += "- **[\(c.severity.rawValue)]** L\(c.line): \(note)\n"
             }
             out += "\n"
         }
