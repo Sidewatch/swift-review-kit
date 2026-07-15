@@ -13,6 +13,10 @@ import Foundation
 /// Run-scoped review state: which changed files you've marked *reviewed*.
 /// Turns "a pile of diffs" into a session you can walk to completion (N of M).
 /// Persisted per-repo so a review survives relaunch; pruned to the live change set.
+///
+/// - Note: State is persisted synchronously to `UserDefaults.standard` (key
+///   `sidewatch.reviewSession`) on every mutation. Not thread-safe — call from
+///   one thread (in practice, the main thread).
 public final class ReviewSession {
 
     /// The shared, process-wide session.
@@ -26,9 +30,11 @@ public final class ReviewSession {
 
     private init() { load() }
 
-    /// Scopes subsequent calls to the repository rooted at `root`.
+    /// Scopes subsequent calls to the repository rooted at `root` (`nil` scopes
+    /// to a shared "no repo" bucket).
     public func setRepo(_ root: URL?) { repoKey = root?.path ?? "" }
 
+    /// The reviewed set for the current repo; setting it persists immediately.
     private var reviewed: Set<String> {
         get { reviewedByRepo[repoKey] ?? [] }
         set {
@@ -83,9 +89,11 @@ public final class ReviewSession {
         }
     }
 
+    /// Writes the whole per-repo store to `UserDefaults.standard` (Set → Array for plist).
     private func save() {
         UserDefaults.standard.set(reviewedByRepo.mapValues { Array($0) }, forKey: "sidewatch.reviewSession")
     }
+    /// Restores the per-repo store from `UserDefaults.standard` (a no-op if absent or malformed).
     private func load() {
         guard let flat = UserDefaults.standard.dictionary(forKey: "sidewatch.reviewSession") as? [String: [String]] else { return }
         reviewedByRepo = flat.mapValues { Set($0) }
