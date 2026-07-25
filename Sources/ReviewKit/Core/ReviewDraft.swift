@@ -38,6 +38,10 @@ public final class ReviewDraft {
 
     /// The comments grouped by file, each file's notes sorted by line — the block sent to the agent.
     ///
+    /// A note that carries a ``ReviewComment/hunk`` quotes it as a fenced block indented into
+    /// the list item, so the agent sees the exact source the note is about. Notes without one
+    /// emit precisely as before.
+    ///
     /// - Returns: A markdown string, or an empty string when there are no comments.
     public func markdown() -> String {
         guard !comments.isEmpty else { return "" }
@@ -50,7 +54,17 @@ public final class ReviewDraft {
                 // Indent continuation lines so a multi-line note stays inside its
                 // list item instead of escaping into a sibling bullet or file heading.
                 let note = c.note.replacingOccurrences(of: "\n", with: "\n  ")
-                out += "- **[\(c.severity.rawValue)]** L\(c.line): \(note)\n"
+                let span = (c.endLine.map { $0 > c.line } ?? false) ? "L\(c.line)-L\(c.endLine!)" : "L\(c.line)"
+                out += "- **[\(c.severity.rawValue)]** \(span): \(note)\n"
+                if let hunk = c.hunk, !hunk.isEmpty {
+                    // Two-space indent (the same one the note's continuation lines use) keeps the
+                    // fence inside the list item; the blank line before it is what makes markdown
+                    // read it as a code block rather than more paragraph text.
+                    let quoted = hunk.components(separatedBy: "\n")
+                        .map { $0.isEmpty ? "" : "  " + $0 }
+                        .joined(separator: "\n")
+                    out += "\n  ```\n\(quoted)\n  ```\n"
+                }
             }
             out += "\n"
         }

@@ -106,6 +106,67 @@ final class ReviewKitTests: XCTestCase {
         XCTAssertFalse(ReviewDraft.shared.markdown().contains("\n### a.swift"))
     }
 
+    func testMarkdownQuotesTheHunkAsAFencedBlockInsideTheListItem() {
+        ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 12, endLine: 14,
+                                             hunk: "func go() {\n    return 1\n}",
+                                             severity: .mustFix, note: "returns the wrong thing"))
+        let expected = """
+        ## Code review
+
+        ### a.swift
+        - **[must-fix]** L12-L14: returns the wrong thing
+
+          ```
+          func go() {
+              return 1
+          }
+          ```
+        """
+        XCTAssertEqual(ReviewDraft.shared.markdown(), expected)
+    }
+
+    func testMarkdownWithoutAHunkIsUnchanged() {
+        // The pre-existing emission must be byte-identical for a note carrying no source —
+        // no range suffix, no fence, no extra blank line.
+        ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 5, severity: .suggestion, note: "nit"))
+        let expected = """
+        ## Code review
+
+        ### a.swift
+        - **[suggestion]** L5: nit
+        """
+        XCTAssertEqual(ReviewDraft.shared.markdown(), expected)
+    }
+
+    func testMarkdownOmitsTheRangeWhenTheNoteIsASingleLine() {
+        // endLine equal to line is a single-line note, not a degenerate range.
+        ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 7, endLine: 7, hunk: "let x = 1",
+                                             severity: .question, note: "why?"))
+        let md = ReviewDraft.shared.markdown()
+        XCTAssertTrue(md.contains("- **[question]** L7: why?"))
+        XCTAssertFalse(md.contains("L7-L7"))
+        XCTAssertTrue(md.contains("  ```\n  let x = 1\n  ```"))
+    }
+
+    func testMarkdownHunkKeepsBlankLinesUnindented() {
+        // Indenting an empty line would leave trailing whitespace inside the fence.
+        ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 1, endLine: 3, hunk: "a\n\nb",
+                                             severity: .mustFix, note: "n"))
+        XCTAssertTrue(ReviewDraft.shared.markdown().contains("  ```\n  a\n\n  b\n  ```"))
+    }
+
+    func testEmptyHunkEmitsNoFence() {
+        ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 1, endLine: nil, hunk: "",
+                                             severity: .mustFix, note: "n"))
+        XCTAssertFalse(ReviewDraft.shared.markdown().contains("```"))
+    }
+
+    func testLegacyInitStillCompilesAndCarriesNoSource() {
+        let c = ReviewComment(file: "a.swift", line: 3, severity: .mustFix, note: "n")
+        XCTAssertNil(c.endLine)
+        XCTAssertNil(c.hunk)
+    }
+
     func testSeverityRawValuesAppearInMarkdown() {
         ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 1, severity: .mustFix, note: "x"))
         let md = ReviewDraft.shared.markdown()
