@@ -14,7 +14,8 @@ let package = Package(
         .library(name: "ReviewKit", targets: ["ReviewKit"]),
     ],
     targets: [
-        .target(name: "ReviewKit", path: "Sources"),
+        .target(name: "ReviewKit", path: "Sources",
+                swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
         .testTarget(name: "ReviewKitTests", dependencies: ["ReviewKit"], path: "Tests"),
     ]
 )
