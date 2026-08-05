@@ -14,6 +14,11 @@ import Foundation
 /// emitted as a single structured markdown block into the terminal for the agent
 /// to act on. Part of the "Send to Agent" surface — Sidewatch composes precise
 /// feedback; the terminal agent does the editing.
+/// - Note: `@MainActor` states what was already true rather than adding a constraint —
+///   this is UI state, and every caller in the app reaches it from the main thread
+///   (verified: no call site sits inside a background dispatch). Isolating it makes the
+///   compiler enforce that, instead of it holding by convention.
+@MainActor
 public final class ReviewDraft {
 
     /// The shared, process-wide draft.

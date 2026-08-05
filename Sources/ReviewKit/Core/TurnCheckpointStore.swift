@@ -53,6 +53,11 @@ public struct TurnCheckpoint: Equatable {
 ///
 /// - Note: State is persisted synchronously to `UserDefaults.standard` under
 ///   `sidewatch.turnCheckpoints`, mirroring ``ReviewSession``.
+/// - Note: `@MainActor` states what was already true rather than adding a constraint —
+///   this is UI state, and every caller in the app reaches it from the main thread
+///   (verified: no call site sits inside a background dispatch). Isolating it makes the
+///   compiler enforce that, instead of it holding by convention.
+@MainActor
 public final class TurnCheckpointStore {
 
     /// The shared, process-wide store.

@@ -17,6 +17,11 @@ import Foundation
 /// - Note: State is persisted synchronously to `UserDefaults.standard` (key
 ///   `sidewatch.reviewSession`) on every mutation. Not thread-safe — call from
 ///   one thread (in practice, the main thread).
+/// - Note: `@MainActor` states what was already true rather than adding a constraint —
+///   this is UI state, and every caller in the app reaches it from the main thread
+///   (verified: no call site sits inside a background dispatch). Isolating it makes the
+///   compiler enforce that, instead of it holding by convention.
+@MainActor
 public final class ReviewSession {
 
     /// The shared, process-wide session.
