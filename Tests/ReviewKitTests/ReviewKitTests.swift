@@ -8,6 +8,7 @@
 import XCTest
 @testable import ReviewKit
 
+@MainActor
 final class ReviewKitTests: XCTestCase {
 
     override func setUp() {

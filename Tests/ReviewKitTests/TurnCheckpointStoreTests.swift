@@ -8,6 +8,8 @@
 import XCTest
 @testable import ReviewKit
 
+// The store is main-actor isolated; XCTest runs a @MainActor test class on the main queue.
+@MainActor
 final class TurnCheckpointStoreTests: XCTestCase {
 
     private let store = TurnCheckpointStore.shared
