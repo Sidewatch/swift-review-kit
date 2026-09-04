@@ -73,6 +73,6 @@ public final class ReviewDraft {
             }
             out += "\n"
         }
-        return out.trimmingCharacters(in: .whitespacesAndNewlines)
+        return out.trimmed
     }
 }

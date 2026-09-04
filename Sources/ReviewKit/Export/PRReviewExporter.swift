@@ -81,7 +81,7 @@ public enum PRReviewExporter {
     private static func nameWithOwner(gh: String, in root: URL) -> String? {
         let r = run(gh, args: ["repo", "view", "--json", "nameWithOwner"], in: root)
         guard r.status == 0,
-              let obj = try? JSONSerialization.jsonObject(with: r.stdout) as? [String: Any],
+              let obj = JSONObject.parse(r.stdout),
               let name = obj["nameWithOwner"] as? String, !name.isEmpty else { return nil }
         return name
     }
@@ -90,7 +90,7 @@ public enum PRReviewExporter {
     private static func pullRequestNumber(gh: String, in root: URL) -> Int? {
         let r = run(gh, args: ["pr", "view", "--json", "number"], in: root)
         guard r.status == 0,
-              let obj = try? JSONSerialization.jsonObject(with: r.stdout) as? [String: Any],
+              let obj = JSONObject.parse(r.stdout),
               let number = obj["number"] as? Int else { return nil }
         return number
     }
@@ -100,7 +100,7 @@ public enum PRReviewExporter {
     private static func prChangedPaths(gh: String, in root: URL) -> Set<String>? {
         let r = run(gh, args: ["pr", "view", "--json", "files"], in: root)
         guard r.status == 0,
-              let obj = try? JSONSerialization.jsonObject(with: r.stdout) as? [String: Any],
+              let obj = JSONObject.parse(r.stdout),
               let files = obj["files"] as? [[String: Any]] else { return nil }
         return Set(files.compactMap { $0["path"] as? String })
     }
@@ -135,7 +135,7 @@ public enum PRReviewExporter {
             let note = c.note.replacingOccurrences(of: "\n", with: "\n  ")
             out += "- **[\(c.severity.rawValue)]** `\(c.file):\(c.line)` — \(note)\n"
         }
-        return out.trimmingCharacters(in: .whitespacesAndNewlines)
+        return out.trimmed
     }
 
     /// Scans a 422 response body for `candidates` paths named in its `errors`
@@ -143,7 +143,7 @@ public enum PRReviewExporter {
     /// echoed back are returned — an empty set means the reject is unidentifiable
     /// and the caller should fall back for the whole batch.
     static func rejectedPaths(inErrorBody data: Data, candidates: Set<String>) -> Set<String> {
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
+        guard let obj = JSONObject.parse(data) else { return [] }
         var texts: [String] = []
         if let message = obj["message"] as? String { texts.append(message) }
         for e in obj["errors"] as? [Any] ?? [] {
