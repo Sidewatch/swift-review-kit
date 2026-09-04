@@ -24,7 +24,7 @@ A tiny, dependency-free model layer for a code-review pass over a set of changed
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Sidewatch/swift-review-kit.git", from: "1.0.0")
+    .package(url: "https://github.com/Sidewatch/swift-review-kit.git", from: "0.1.0")
 ]
 ```
 
