@@ -4,11 +4,11 @@ import PackageDescription
 let package = Package(
     name: "ReviewKit",
     platforms: [.macOS(.v14)],
-    dependencies: [
-        .package(path: "../swift-process-runner"),
-    ],
     products: [
         .library(name: "ReviewKit", targets: ["ReviewKit"]),
+    ],
+    dependencies: [
+        .package(path: "../swift-process-runner"),
     ],
     targets: [
         .target(name: "ReviewKit", dependencies: [.product(name: "ProcessRunner", package: "swift-process-runner")], path: "Sources",

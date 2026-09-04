@@ -17,7 +17,7 @@ import ProcessRunner
 public enum PRReviewExporter {
 
     /// The outcome of one export, for the panel's status label.
-    public enum Outcome: Equatable {
+    public enum Outcome: Equatable, Sendable {
         /// The inline review posted: `inline` comments pinned to lines, `inBody` folded into the review body.
         case inline(inline: Int, inBody: Int)
         /// The inline path failed but the consolidated single-comment fallback posted.
