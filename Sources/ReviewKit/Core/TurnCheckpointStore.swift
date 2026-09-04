@@ -77,7 +77,7 @@ public final class TurnCheckpointStore {
     private init() { load() }
 
     /// Points the store at a repository. Pass `nil` when no repo is open.
-    public func setRepo(_ root: URL?) { repoKey = root?.path ?? "" }
+    public func setRepo(_ root: URL?) { repoKey = RepoKey.of(root) }
 
     /// The current repo's checkpoints, oldest first.
     public var checkpoints: [TurnCheckpoint] { byRepo[repoKey] ?? [] }

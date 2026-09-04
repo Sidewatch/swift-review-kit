@@ -37,7 +37,7 @@ public final class ReviewSession {
 
     /// Scopes subsequent calls to the repository rooted at `root` (`nil` scopes
     /// to a shared "no repo" bucket).
-    public func setRepo(_ root: URL?) { repoKey = root?.path ?? "" }
+    public func setRepo(_ root: URL?) { repoKey = RepoKey.of(root) }
 
     /// The reviewed set for the current repo; setting it persists immediately.
     private var reviewed: Set<String> {

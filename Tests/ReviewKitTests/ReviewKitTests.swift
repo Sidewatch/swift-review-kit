@@ -289,3 +289,11 @@ final class ReviewKitTests: XCTestCase {
         XCTAssertNil(persisted?[repo.path])
     }
 }
+
+final class RepoKeyTests: XCTestCase {
+    func testBothStoresFileARepoUnderTheSameKey() {
+        let root = URL(fileURLWithPath: "/tmp/repo")
+        XCTAssertEqual(RepoKey.of(root), "/tmp/repo")
+        XCTAssertEqual(RepoKey.of(nil), "")
+    }
+}
