@@ -1,3 +1,15 @@
+//
+//  PRReviewExporter.swift
+//  ReviewKit
+//
+//  Posts the Notes-for-Agent draft to the current branch's GitHub pull request as **inline
+//  review comments**: one `event: COMMENT` review whose `comments` array pins each note to its
+//  `file:line` on the `RIGHT` side of the diff (the modern line-based review API — no diff-
+//  position math).
+//
+//  Created by David Sherlock on 9/5/26.
+//
+
 import Foundation
 import ProcessRunner
 

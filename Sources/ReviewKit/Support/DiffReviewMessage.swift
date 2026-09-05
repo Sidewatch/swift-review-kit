@@ -1,3 +1,12 @@
+//
+//  DiffReviewMessage.swift
+//  ReviewKit
+//
+//  The one message an agent receives for a batch of ``DiffReviewComment``s.
+//
+//  Created by David Sherlock on 9/5/26.
+//
+
 import Foundation
 
 /// The one message an agent receives for a batch of ``DiffReviewComment``s.

@@ -1,3 +1,13 @@
+//
+//  DiffReviewTests.swift
+//  ReviewKitTests
+//
+//  Ported from Sidewatch's --selftest-review: the mapping from a rendered diff line to a file
+//  line, and the message the agent receives.
+//
+//  Created by David Sherlock on 9/5/26.
+//
+
 import XCTest
 @testable import ReviewKit
 

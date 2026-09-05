@@ -1,3 +1,13 @@
+//
+//  DiffReviewComment.swift
+//  ReviewKit
+//
+//  One remark on one diff line — comment-driven review: pick a line in a rendered diff, say
+//  what is wrong, repeat, then send the lot to the agent as ONE message.
+//
+//  Created by David Sherlock on 9/5/26.
+//
+
 import Foundation
 
 /// One remark on one diff line — comment-driven review: pick a line in a rendered diff, say

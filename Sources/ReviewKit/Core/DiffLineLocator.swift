@@ -1,3 +1,13 @@
+//
+//  DiffLineLocator.swift
+//  ReviewKit
+//
+//  Maps a rendered unified-diff line back to a file line, so a click on the Nth visible line of
+//  a chunk can say "src/main.py:7, added".
+//
+//  Created by David Sherlock on 9/5/26.
+//
+
 import Foundation
 
 /// Maps a rendered unified-diff line back to a file line, so a click on the Nth visible line
