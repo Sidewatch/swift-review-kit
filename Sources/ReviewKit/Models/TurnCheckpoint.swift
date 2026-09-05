@@ -2,6 +2,10 @@
 //  TurnCheckpoint.swift
 //  ReviewKit
 //
+//  The snapshot taken when an agent turn began.
+//
+//  Created by David Sherlock on 9/5/26.
+//
 
 import Foundation
 

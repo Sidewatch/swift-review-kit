@@ -2,12 +2,17 @@
 //  ReviewKitTests.swift
 //  Tests for SwiftReviewKit
 //
+//  Tests for `ReviewDraft`: notes accumulate per file, render to the markdown the agent
+//  receives, and clear; the shared draft is reset around every test.
+//
 //  Created by David Sherlock on 7/9/26.
 //
 
 import XCTest
 @testable import ReviewKit
 
+/// Tests for `ReviewDraft`: notes accumulate per file, render to the markdown the agent
+/// receives, and clear; the shared draft is reset around every test.
 @MainActor
 final class ReviewKitTests: XCTestCase {
 
@@ -290,6 +295,7 @@ final class ReviewKitTests: XCTestCase {
     }
 }
 
+/// Pins `RepoKey.of`: both stores file a repository under its path, and nil is the empty key.
 final class RepoKeyTests: XCTestCase {
     func testBothStoresFileARepoUnderTheSameKey() {
         let root = URL(fileURLWithPath: "/tmp/repo")

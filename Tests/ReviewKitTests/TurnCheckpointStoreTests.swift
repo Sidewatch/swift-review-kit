@@ -2,6 +2,9 @@
 //  TurnCheckpointStoreTests.swift
 //  Tests for SwiftReviewKit
 //
+//  Tests for `TurnCheckpointStore`: one checkpoint per turn start, the 50-entry bound with
+//  evicted ids returned, persistence per repository, and reset.
+//
 //  Created by David Sherlock on 7/25/26.
 //
 
@@ -9,6 +12,8 @@ import XCTest
 @testable import ReviewKit
 
 // The store is main-actor isolated; XCTest runs a @MainActor test class on the main queue.
+/// Tests for `TurnCheckpointStore`: one checkpoint per turn start, the 50-entry bound with
+/// evicted ids returned, persistence per repository, and reset.
 @MainActor
 final class TurnCheckpointStoreTests: XCTestCase {
 
