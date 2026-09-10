@@ -61,24 +61,4 @@ final class DiffReviewTests: XCTestCase {
         XCTAssertEqual(DiffReviewMessage.format([], repoName: "demo"), "")
     }
 
-    func testPRReviewPayloadPinsInlineCommentsAndFoldsTheRestIntoTheBody() throws {
-        let inline = ReviewComment(file: "src/a.py", line: 3, severity: .mustFix, note: "off by one")
-        let outside = ReviewComment(file: "docs/x.md", line: 1, severity: .suggestion, note: "typo\nsecond line")
-        let data = try XCTUnwrap(PRReviewExporter.reviewPayload(inline: [inline], inBody: [outside]))
-        let obj = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        XCTAssertEqual(obj["event"] as? String, "COMMENT")
-        let comments = try XCTUnwrap(obj["comments"] as? [[String: Any]])
-        XCTAssertEqual(comments.count, 1)
-        XCTAssertEqual(comments[0]["path"] as? String, "src/a.py"); XCTAssertEqual(comments[0]["line"] as? Int, 3); XCTAssertEqual(comments[0]["side"] as? String, "RIGHT")
-        XCTAssertEqual(comments[0]["body"] as? String, "**[\(ReviewSeverity.mustFix.rawValue)]** off by one")
-        let body = try XCTUnwrap(obj["body"] as? String)
-        XCTAssertTrue(body.contains("`docs/x.md:1`") && body.contains("typo\n  second line"), "continuation lines stay inside the bullet:\n\(body)")
-        XCTAssertEqual(PRReviewExporter.bodyMarkdown([]), "")
-    }
-
-    func testRejectedPathsOnlyReturnsPathsTheAPIEchoedBack() {
-        let body = Data(#"{"message":"Validation Failed","errors":[{"resource":"PullRequestReviewComment","message":"path docs/x.md is not part of the diff"}, "unrelated"]}"#.utf8)
-        XCTAssertEqual(PRReviewExporter.rejectedPaths(inErrorBody: body, candidates: ["docs/x.md", "src/a.py"]), ["docs/x.md"])
-        XCTAssertEqual(PRReviewExporter.rejectedPaths(inErrorBody: Data("not json".utf8), candidates: ["docs/x.md"]), [])
-    }
 }

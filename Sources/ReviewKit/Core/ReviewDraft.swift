@@ -38,6 +38,45 @@ public final class ReviewDraft {
     /// Removes the comment at index `i` (a no-op if out of range) and notifies ``onChange``.
     public func remove(at i: Int) { guard comments.indices.contains(i) else { return }; comments.remove(at: i); onChange?() }
 
+    /// Moves every note in `file` to follow a text edit, so a note stays on the code it was
+    /// written about after lines are inserted or deleted above it.
+    ///
+    /// Without this a note's line is frozen at the moment it was typed: insert ten lines above
+    /// it and clicking it in the sidebar jumps ten lines short, and any per-line marker drawn
+    /// for it points at the wrong code. See ``ReviewComment/remappingLines(editLine:spanEndLine:lineDelta:)``
+    /// for the rule, which is deliberately the same one the editor applies to its diff bands.
+    ///
+    /// ``onChange`` fires only when something actually moved, so a keystroke that changes no
+    /// line numbers costs one pass and no redraw.
+    ///
+    /// - Parameters:
+    ///   - file: The file whose notes should move; notes for other files are untouched.
+    ///   - editLine: 1-based line the edit began on.
+    ///   - spanEndLine: 1-based line the replaced span ended on.
+    ///   - lineDelta: Lines gained (positive) or lost (negative) by the document.
+    public func remapLines(inFile file: String, editLine: Int, spanEndLine: Int, lineDelta: Int) {
+        guard lineDelta != 0 else { return }
+        var moved = false
+        comments = comments.map { c in
+            guard c.file == file else { return c }
+            let next = c.remappingLines(editLine: editLine, spanEndLine: spanEndLine, lineDelta: lineDelta)
+            if next.line != c.line || next.endLine != c.endLine { moved = true }
+            return next
+        }
+        if moved { onChange?() }
+    }
+
+    /// The 1-based lines in `file` that carry at least one note — what a gutter draws a marker
+    /// for. Empty when the file has none, which is the common case and costs one pass.
+    ///
+    /// - Parameter file: The file to look up, keyed exactly as the notes were added.
+    /// - Returns: The set of lines holding a note.
+    public func noteLines(inFile file: String) -> Set<Int> {
+        var lines = Set<Int>()
+        for c in comments where c.file == file { lines.insert(c.line) }
+        return lines
+    }
+
     /// Removes every comment and notifies ``onChange``.
     public func clear() { comments.removeAll(); onChange?() }
 
