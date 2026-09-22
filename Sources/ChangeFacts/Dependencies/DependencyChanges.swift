@@ -260,12 +260,8 @@ public enum DependencyChanges {
 
     // MARK: - Regex helpers (groups as strings; a missing group is "")
 
-    public static func matches(_ pattern: String, _ text: String) -> [[String]] {
-        guard let re = try? NSRegularExpression(pattern: pattern) else { return [] }
-        let ns = text as NSString
-        return re.matches(in: text, range: NSRange(location: 0, length: ns.length)).map { m in
-            (0..<m.numberOfRanges).map { m.range(at: $0).location == NSNotFound ? "" : ns.substring(with: m.range(at: $0)) }
-        }
-    }
-    public static func match(_ pattern: String, _ text: String) -> [String]? { matches(pattern, text).first }
+    /// Every match of `pattern` in `text` as its capture groups; see `RegexMatches`.
+    public static func matches(_ pattern: String, _ text: String) -> [[String]] { RegexMatches.all(pattern, in: text) }
+    /// The first match of `pattern` in `text`, or `nil`.
+    public static func match(_ pattern: String, _ text: String) -> [String]? { RegexMatches.first(pattern, in: text) }
 }

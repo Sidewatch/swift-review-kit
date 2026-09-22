@@ -28,3 +28,4 @@ non-issues* current so the next pass skips them.
 ## History
 
 - 22 Sep 2026 — extracted from Sidewatch; first family audit.
+- 22 Sep 2026 (later) — `DatabaseCommands`, `TestRuns` and `ShellCommandLine` moved in from Sidewatch's `AgentDatabaseCommands` / `AgentTestRuns` (the transcript walk stays in the app); `parse` split into one reader per runner family; the regex helper is `Support/RegexMatches` with `DependencyChanges.matches` forwarding. Fixed while porting: golang-migrate's verb was read as the value of `-path` (`migrate -path db -database $URL down -all` was not a command at all) — pinned by `DatabaseCommandsTests`.

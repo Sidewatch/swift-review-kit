@@ -1,7 +1,7 @@
 # Swift Change Facts
 
-What a change to a codebase DID, as facts a reviewer can hold against a brief — never a judgement.
-Extracted from [Sidewatch](https://github.com/Sidewatch) on 22 Sep 2026, where each reader shipped
+What a change to a codebase DID, as facts a reviewer can hold against a brief — never a judgement;
+and what the shell lines an agent ran did to the data, and which test runs they made. Extracted from [Sidewatch](https://github.com/Sidewatch) on 22 Sep 2026, where each reader shipped
 with a mutation-verified harness; those cases are this package's tests.
 
 ```swift
@@ -28,6 +28,13 @@ DependencyChanges.headline(DependencyChanges.facts(oldText: old, newText: new, p
 // What a change starts reading and calling, on its added lines, minus what the file already did.
 AddedLineSurface.tooltip(AddedLineSurface.findings(oldText: old, newText: new, path: "src/pay.js", addedLines: added))
 // "Reads new environment variable: STRIPE_KEY · Calls new host: api.stripe.com"
+
+// What a shell line an agent ran DID to the data, and what tests it ran and what they said.
+DatabaseCommands.detect("cd app && npx prisma migrate reset --force && psql app -c 'DELETE FROM sessions'")
+    .map { "\($0.tool): \($0.summary)" }
+// ["prisma: prisma migrate reset — drops and recreates the database", "psql: DELETE without WHERE on sessions"]
+TestRuns.runs(in: "swift build && swift test", output: toolResult, isError: false).map(\.summary)
+// ["swift test: 12 passed, 0 failed"]
 ```
 
 ## Facts, not judgements
@@ -50,6 +57,14 @@ reviewer's call, and nothing here has a threshold or an opinion about "good".
   format not read here yields nothing rather than a guess.
 - **Surface** ignores loopback, private, example, schema and namespace hosts, and manifests,
   lockfiles, prose, tests and vendored trees.
+- **Database commands** are read from a shell line split the way a shell runs it (`ShellCommandLine`:
+  `&&`, `||`, `;`, `|`, newlines outside quotes; a heredoc stays with its opener; `sudo`, `env`,
+  `npx`, `bundle exec`, `docker compose exec svc`, `kubectl exec pod --`, `sh -c`, `ssh host` are
+  peeled). Inline SQL is classified by `DestructiveSQL`; a framework subcommand by its own
+  documentation (`prisma migrate reset` drops the database, `prisma migrate deploy` does not); a
+  file fed to a client is named, not read; a script is not seen through.
+- **Test runs** are the runners by their own names and what each REPORTED in its own summary line.
+  A run whose summary cannot be read is `unknown`, never guessed from the exit status.
 
 ## Requirements
 

@@ -45,8 +45,8 @@ public enum AddedLineSurface {
         let dialect = DestructiveSQL.dialect(forPath: path) ?? .other
         let clean = DestructiveSQL.stripped(text, dialect: dialect)
         var names = Set<String>(), hosts = Set<String>()
-        for p in envPatterns { for m in DependencyChanges.matches(p, clean) { names.insert(m[1]) } }
-        for m in DependencyChanges.matches(hostPattern, clean) {
+        for p in envPatterns { for m in RegexMatches.all(p, in: clean) { names.insert(m[1]) } }
+        for m in RegexMatches.all(hostPattern, in: clean) {
             let host = m[1].lowercased()
             guard !ignoredHosts.contains(host), !host.hasSuffix(".local"), !host.hasSuffix(".localhost"), host != "127.0.0.1", host != "0.0.0.0" else { continue }
             if host.range(of: #"^\d+\.\d+\.\d+\.\d+$"#, options: .regularExpression) != nil, host.hasPrefix("127.") || host.hasPrefix("10.") || host.hasPrefix("192.168.") { continue }
