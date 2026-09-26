@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import FoundationExtensions
 
 /// A batch of review notes accumulated across files during one review pass, then
 /// emitted as a single structured markdown block into the terminal for the agent

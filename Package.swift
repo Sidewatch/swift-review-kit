@@ -9,9 +9,11 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../swift-process-runner"),
+        .package(path: "../swift-foundation-extensions"),
     ],
     targets: [
-        .target(name: "ReviewKit", dependencies: [.product(name: "ProcessRunner", package: "swift-process-runner")], path: "Sources",
+        .target(name: "ReviewKit", dependencies: [.product(name: "ProcessRunner", package: "swift-process-runner"),
+                                             .product(name: "FoundationExtensions", package: "swift-foundation-extensions")], path: "Sources",
                 swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(name: "ReviewKitTests", dependencies: ["ReviewKit"], path: "Tests"),
     ]
