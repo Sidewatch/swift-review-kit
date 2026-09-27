@@ -2,8 +2,8 @@
 //  TestRunsTests.swift
 //  ChangeFactsTests
 //
-//  Ported from Sidewatch's --selftest-change-facts: the runners by their own names, each one's
-//  summary read as counts, and test files told by path and name.
+//  The runners by their own names, each one's summary read as counts, and test files told by
+//  path and name.
 //
 //  Created by David Sherlock on 9/22/26.
 //  Copyright © 2026 ArrayPress Limited. MIT licence.

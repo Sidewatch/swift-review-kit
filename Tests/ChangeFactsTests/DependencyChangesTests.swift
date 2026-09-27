@@ -2,8 +2,7 @@
 //  DependencyChangesTests.swift
 //  ChangeFactsTests
 //
-//  Every manifest parser, the facts (adds, removes, bumps) and the headline. Ported from
-//  Sidewatch's `--selftest-change-facts` on 22 Sep 2026.
+//  Every manifest parser, the facts (adds, removes, bumps) and the headline.
 //
 //  Created by David Sherlock on 9/22/26.
 //  Copyright © 2026 ArrayPress Limited. MIT licence.

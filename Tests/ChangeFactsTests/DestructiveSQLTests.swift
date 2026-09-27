@@ -3,8 +3,8 @@
 //  ChangeFactsTests
 //
 //  The SQL forms, the comment and literal rules per dialect, added-lines-only, the skips, the
-//  migration DSLs against fixture files, and the diff-chunk marks. Ported from Sidewatch's
-//  `--selftest-change-facts` on 22 Sep 2026, where every case had been mutation-verified.
+//  migration DSLs against fixture files, and the diff-chunk marks.
+//  Every case is mutation-verified.
 //
 //  Created by David Sherlock on 9/22/26.
 //  Copyright © 2026 ArrayPress Limited. MIT licence.

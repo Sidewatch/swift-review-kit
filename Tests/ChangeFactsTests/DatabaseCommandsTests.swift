@@ -2,8 +2,7 @@
 //  DatabaseCommandsTests.swift
 //  ChangeFactsTests
 //
-//  Ported from Sidewatch's --selftest-change-facts: the database commands a shell line ran, with
-//  the severity the SQL or the subcommand earns.
+//  The database commands a shell line ran, with the severity the SQL or the subcommand earns.
 //
 //  Created by David Sherlock on 9/22/26.
 //  Copyright © 2026 ArrayPress Limited. MIT licence.
