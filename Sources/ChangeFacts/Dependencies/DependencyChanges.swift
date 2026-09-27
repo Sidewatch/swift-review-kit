@@ -35,9 +35,16 @@ public enum DependencyChanges {
         /// The fact as a phrase: "adds left-pad 1.3.0", "removes lodash", "bumps axios 1.6 → 1.7".
         public var summary: String {
             switch kind {
-            case .added: return "adds \(name)" + (version.map { $0.isEmpty ? "" : " \($0)" } ?? "")
-            case .removed: return "removes \(name)"
-            case .changed: return "bumps \(name) \(oldVersion ?? "?") → \(version ?? "?")"
+            case .added:
+                if let version, !version.isEmpty {
+                    return String(localized: "adds \(name) \(version)", bundle: .module,
+                                  comment: "Dependency change: the first argument is the package name, the second its version")
+                }
+                return String(localized: "adds \(name)", bundle: .module, comment: "Dependency change: the argument is the package name")
+            case .removed: return String(localized: "removes \(name)", bundle: .module, comment: "Dependency change: the argument is the package name")
+            case .changed:
+                return String(localized: "bumps \(name) \(oldVersion ?? "?") → \(version ?? "?")", bundle: .module,
+                              comment: "Dependency change: package name, then its old version → new version")
             }
         }
         /// Creates a fact from its parts.
@@ -98,7 +105,7 @@ public enum DependencyChanges {
     /// "Dependencies: adds left-pad 1.3.0, stripe ^12; removes lodash; bumps axios 1.6 → 1.7".
     public static func headline(_ facts: [Fact]) -> String? {
         guard !facts.isEmpty else { return nil }
-        func list(_ kind: Fact.Kind, _ verb: String) -> String? {
+        func list(_ kind: Fact.Kind) -> String? {
             let items = facts.filter { $0.kind == kind }
             guard !items.isEmpty else { return nil }
             let shown = items.prefix(6).map { f -> String in
@@ -108,9 +115,20 @@ public enum DependencyChanges {
                 case .changed: return "\(f.name) \(f.oldVersion ?? "?") → \(f.version ?? "?")"
                 }
             }
-            return verb + " " + shown.joined(separator: ", ") + (items.count > 6 ? " and \(items.count - 6) more" : "")
+            var names = shown.joined(separator: ", ")
+            if items.count > 6 {
+                names = String(localized: "\(names) and \(items.count - 6) more", bundle: .module,
+                               comment: "Dependency list: the first argument is a comma-separated list of packages, the second how many more were left out")
+            }
+            switch kind {
+            case .added: return String(localized: "adds \(names)", bundle: .module, comment: "Dependency summary clause: the argument is a list of added packages")
+            case .removed: return String(localized: "removes \(names)", bundle: .module, comment: "Dependency summary clause: the argument is a list of removed packages")
+            case .changed: return String(localized: "bumps \(names)", bundle: .module, comment: "Dependency summary clause: the argument is a list of packages with old → new versions")
+            }
         }
-        return "Dependencies: " + [list(.added, "adds"), list(.removed, "removes"), list(.changed, "bumps")].compactMap { $0 }.joined(separator: "; ")
+        let clauses = [list(.added), list(.removed), list(.changed)].compactMap { $0 }.joined(separator: "; ")
+        return String(localized: "Dependencies: \(clauses)", bundle: .module,
+                      comment: "Tool-tip on a changed dependency manifest; the argument is the semicolon-separated adds/removes/bumps clauses")
     }
 
     // MARK: - Parsers

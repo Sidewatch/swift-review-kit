@@ -77,11 +77,14 @@ public enum TestRuns {
         /// "npm test: no summary".
         public var summary: String {
             switch (outcome, passed, failed) {
-            case (.unknown, _, _): return "\(runner): no summary"
-            case (_, let p?, let f?): return "\(runner): \(p) passed, \(f) failed"
-            case (_, let p?, nil): return "\(runner): \(p) passed"
-            case (_, nil, let f?): return "\(runner): \(f) failed"
-            default: return "\(runner): \(outcome == .passed ? "passed" : "FAIL")"
+            case (.unknown, _, _): return String(localized: "\(runner): no summary", bundle: .module, comment: "Test run row; the argument is the test runner, such as npm test. The runner printed no readable result")
+            case (_, let p?, let f?): return String(localized: "\(runner): \(p) passed, \(f) failed", bundle: .module, comment: "Test run row: the test runner, then how many tests passed and failed")
+            case (_, let p?, nil): return String(localized: "\(runner): \(p) passed", bundle: .module, comment: "Test run row: the test runner, then how many tests passed")
+            case (_, nil, let f?): return String(localized: "\(runner): \(f) failed", bundle: .module, comment: "Test run row: the test runner, then how many tests failed")
+            default:
+                return outcome == .passed
+                    ? String(localized: "\(runner): passed", bundle: .module, comment: "Test run row: the test runner, then its verdict with no counts")
+                    : String(localized: "\(runner): FAIL", bundle: .module, comment: "Test run row: the test runner, then its verdict with no counts")
             }
         }
     }
@@ -105,8 +108,11 @@ public enum TestRuns {
     public static func testFilesTally(_ paths: [String]) -> String? {
         guard !paths.isEmpty else { return nil }
         let tests = paths.filter(isTestPath).count
-        let files = paths.count == 1 ? "1 changed file" : "\(paths.count) changed files"
-        return files + (tests == 0 ? ", none are tests" : tests == 1 ? ", 1 is a test" : ", \(tests) are tests")
+        if tests == 0 {
+            return String(localized: "\(paths.count) changed files, none are tests", bundle: .module, comment: "Tool-tip on the changed-files count")
+        }
+        return String(localized: "\(paths.count) changed files, \(tests) are tests", bundle: .module,
+                      comment: "Tool-tip on the changed-files count: how many files changed, then how many of them are test files")
     }
 
     // MARK: - Runs

@@ -85,9 +85,25 @@ public enum AddedLineSurface {
     /// "Reads new environment variables: STRIPE_KEY, SENTRY_DSN · Calls new hosts: api.stripe.com".
     public static func tooltip(_ f: Findings) -> String? {
         guard !f.isEmpty else { return nil }
+        func shown(_ items: [String]) -> String {
+            let list = items.prefix(8).joined(separator: ", ")
+            guard items.count > 8 else { return list }
+            return String(localized: "\(list) and \(items.count - 8) more", bundle: .module,
+                          comment: "A shortened list: the first argument is a comma-separated list, the second how many more were left out")
+        }
         var parts: [String] = []
-        if !f.envNames.isEmpty { parts.append("Reads new environment variable\(f.envNames.count == 1 ? "" : "s"): " + f.envNames.prefix(8).joined(separator: ", ") + (f.envNames.count > 8 ? " and \(f.envNames.count - 8) more" : "")) }
-        if !f.hosts.isEmpty { parts.append("Calls new host\(f.hosts.count == 1 ? "" : "s"): " + f.hosts.prefix(8).joined(separator: ", ") + (f.hosts.count > 8 ? " and \(f.hosts.count - 8) more" : "")) }
+        if !f.envNames.isEmpty {
+            let names = shown(f.envNames)
+            parts.append(f.envNames.count == 1
+                ? String(localized: "Reads new environment variable: \(names)", bundle: .module, comment: "Tool-tip on a changed code file; the argument is one environment variable name")
+                : String(localized: "Reads new environment variables: \(names)", bundle: .module, comment: "Tool-tip on a changed code file; the argument is a comma-separated list of environment variable names"))
+        }
+        if !f.hosts.isEmpty {
+            let hosts = shown(f.hosts)
+            parts.append(f.hosts.count == 1
+                ? String(localized: "Calls new host: \(hosts)", bundle: .module, comment: "Tool-tip on a changed code file; the argument is one host name the code now calls")
+                : String(localized: "Calls new hosts: \(hosts)", bundle: .module, comment: "Tool-tip on a changed code file; the argument is a comma-separated list of host names the code now calls"))
+        }
         return parts.joined(separator: " · ")
     }
 

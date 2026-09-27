@@ -62,8 +62,11 @@ public enum DatabaseCommands {
             guard let sql, !sql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
             let findings = DestructiveSQL.findings(in: sql, path: "command.sql")
             if let worst = findings.first(where: { $0.severity == .destructive }) ?? findings.first {
-                let more = findings.count > 1 ? " (+\(findings.count - 1) more)" : ""
-                return (worst.severity, prefix + worst.summary + more)
+                let summary = findings.count > 1
+                    ? String(localized: "\(worst.summary) (+\(findings.count - 1) more)", bundle: .module,
+                             comment: "Database command row: the worst SQL finding, then how many more findings the same command has")
+                    : worst.summary
+                return (worst.severity, prefix + summary)
             }
             return (nil, prefix + firstLine(sql))
         }
@@ -91,37 +94,40 @@ public enum DatabaseCommands {
         switch tool {
         case "psql", "pgcli":
             if let v = sqlVerdict(option(["-c", "--command"]) ?? heredoc, prefix: "") { return make(v.0, v.1) }
-            if let f = file(["-f", "--file"]) { return make(.caution, "runs \((f as NSString).lastPathComponent)") }
-            return make(nil, "opens a psql session")
+            if let f = file(["-f", "--file"]) { return make(.caution, String(localized: "runs \((f as NSString).lastPathComponent)", bundle: .module, comment: "Database command row: the tool runs a SQL file; the argument is the file name")) }
+            return make(nil, String(localized: "opens a psql session", bundle: .module, comment: "Database command row: the agent opened an interactive psql session"))
         case "mysql", "mariadb", "mycli":
             if let v = sqlVerdict(option(["-e", "--execute"]) ?? heredoc, prefix: "") { return make(v.0, v.1) }
-            if let f = file([]) { return make(.caution, "runs \((f as NSString).lastPathComponent)") }
-            return make(nil, "opens a mysql session")
+            if let f = file([]) { return make(.caution, String(localized: "runs \((f as NSString).lastPathComponent)", bundle: .module, comment: "Database command row: the tool runs a SQL file; the argument is the file name")) }
+            return make(nil, String(localized: "opens a mysql session", bundle: .module, comment: "Database command row: the agent opened an interactive mysql session"))
         case "sqlite3", "litecli", "duckdb":
             let positional = args.filter { !$0.hasPrefix("-") }
             let inline = positional.count >= 2 ? positional[1...].joined(separator: " ") : nil
             if let v = sqlVerdict(inline ?? heredoc, prefix: "") { return make(v.0, v.1) }
-            if let f = file([]) { return make(.caution, "runs \((f as NSString).lastPathComponent)") }
-            return make(nil, "opens \(positional.first.map { ($0 as NSString).lastPathComponent } ?? "a database")")
+            if let f = file([]) { return make(.caution, String(localized: "runs \((f as NSString).lastPathComponent)", bundle: .module, comment: "Database command row: the tool runs a SQL file; the argument is the file name")) }
+            if let db = positional.first.map({ ($0 as NSString).lastPathComponent }) {
+                return make(nil, String(localized: "opens \(db)", bundle: .module, comment: "Database command row: the agent opened a database file; the argument is its file name"))
+            }
+            return make(nil, String(localized: "opens a database", bundle: .module, comment: "Database command row: the agent opened a database"))
         case "clickhouse-client", "cqlsh":
             if let v = sqlVerdict(option(["-q", "--query", "-e", "--execute"]) ?? heredoc, prefix: "") { return make(v.0, v.1) }
-            return make(nil, "opens a session")
+            return make(nil, String(localized: "opens a session", bundle: .module, comment: "Database command row: the agent opened an interactive database session"))
         case "mongosh", "mongo":
             let script = (option(["--eval"]) ?? heredoc ?? "")
             if script.range(of: #"dropDatabase\s*\("#, options: .regularExpression) != nil { return make(.destructive, "dropDatabase()") }
             if script.range(of: #"\.drop\s*\("#, options: .regularExpression) != nil { return make(.destructive, "collection drop()") }
             if script.range(of: #"deleteMany\s*\(\s*\{\s*\}"#, options: .regularExpression) != nil { return make(.destructive, "deleteMany({}) — every document") }
-            return make(nil, script.isEmpty ? "opens a mongo shell" : firstLine(script))
+            return make(nil, script.isEmpty ? String(localized: "opens a mongo shell", bundle: .module, comment: "Database command row: the agent opened an interactive MongoDB shell") : firstLine(script))
         case "redis-cli":
             if joined.range(of: #"(?i)\bFLUSH(ALL|DB)\b"#, options: .regularExpression) != nil { return make(.destructive, joined.uppercased().contains("FLUSHALL") ? "FLUSHALL — every key" : "FLUSHDB — every key in the database") }
-            return make(nil, joined.isEmpty ? "opens redis-cli" : firstLine(joined))
-        case "dropdb": return make(.destructive, "dropdb \(sub) — drops the database")
+            return make(nil, joined.isEmpty ? String(localized: "opens redis-cli", bundle: .module, comment: "Database command row: the agent opened redis-cli (a program name, stays as is)") : firstLine(joined))
+        case "dropdb": return make(.destructive, String(localized: "dropdb \(sub) — drops the database", bundle: .module, comment: "Database command row: the command, then what it does; the argument is the database name"))
         case "createdb": return make(nil, "createdb \(sub)")
-        case "pg_dump", "mysqldump", "mongodump": return make(nil, "\(tool) — a backup")
-        case "pg_restore": return make(args.contains("--clean") || args.contains("-c") ? .caution : nil, args.contains("--clean") || args.contains("-c") ? "pg_restore --clean — drops objects before restoring" : "pg_restore")
+        case "pg_dump", "mysqldump", "mongodump": return make(nil, String(localized: "\(tool) — a backup", bundle: .module, comment: "Database command row: the argument is a backup tool, such as pg_dump"))
+        case "pg_restore": return make(args.contains("--clean") || args.contains("-c") ? .caution : nil, args.contains("--clean") || args.contains("-c") ? String(localized: "pg_restore --clean — drops objects before restoring", bundle: .module, comment: "Database command row: the command, then what it does") : "pg_restore")
         case "prisma":
-            if sub == "migrate", sub2 == "reset" { return make(.destructive, "prisma migrate reset — drops and recreates the database") }
-            if sub == "db", sub2 == "push", args.contains("--force-reset") { return make(.destructive, "prisma db push --force-reset — drops and recreates the database") }
+            if sub == "migrate", sub2 == "reset" { return make(.destructive, String(localized: "prisma migrate reset — drops and recreates the database", bundle: .module, comment: "Database command row: the command, then what it does")) }
+            if sub == "db", sub2 == "push", args.contains("--force-reset") { return make(.destructive, String(localized: "prisma db push --force-reset — drops and recreates the database", bundle: .module, comment: "Database command row: the command, then what it does")) }
             if sub == "db", sub2 == "push", args.contains("--accept-data-loss") { return make(.destructive, "prisma db push --accept-data-loss") }
             if sub == "db", sub2 == "execute" { if let v = sqlVerdict(heredoc, prefix: "prisma db execute: ") { return make(v.0, v.1) }; return make(.caution, "prisma db execute \(file(["--file"]).map { "(\(($0 as NSString).lastPathComponent))" } ?? "")") }
             return make(nil, "prisma \(sub) \(sub2)".trimmingCharacters(in: .whitespaces))
@@ -144,7 +150,7 @@ public enum DatabaseCommands {
             }
             return make(nil, "alembic \(sub)")
         case "flyway":
-            if sub == "clean" { return make(.destructive, "flyway clean — drops every object in the schema") }
+            if sub == "clean" { return make(.destructive, String(localized: "flyway clean — drops every object in the schema", bundle: .module, comment: "Database command row: the command, then what it does")) }
             if sub == "undo" { return make(.caution, "flyway undo") }
             return make(nil, "flyway \(sub)")
         case "liquibase":
@@ -159,8 +165,8 @@ public enum DatabaseCommands {
             if task.hasPrefix("db:") { return make(nil, "\(tool) \(task)") }
             return nil
         case "manage.py", "django-admin":
-            if sub == "flush" { return make(.destructive, "manage.py flush — deletes every row") }
-            if sub == "migrate", args.contains("zero") { return make(.destructive, "manage.py migrate … zero — unapplies the app's migrations") }
+            if sub == "flush" { return make(.destructive, String(localized: "manage.py flush — deletes every row", bundle: .module, comment: "Database command row: the command, then what it does")) }
+            if sub == "migrate", args.contains("zero") { return make(.destructive, String(localized: "manage.py migrate … zero — unapplies the app's migrations", bundle: .module, comment: "Database command row: the command, then what it does")) }
             if sub == "dbshell" { if let v = sqlVerdict(heredoc, prefix: "dbshell: ") { return make(v.0, v.1) }; return make(nil, "manage.py dbshell") }
             if ["migrate", "makemigrations", "sqlmigrate", "loaddata", "dumpdata", "showmigrations"].contains(sub) { return make(nil, "manage.py \(sub)") }
             return nil

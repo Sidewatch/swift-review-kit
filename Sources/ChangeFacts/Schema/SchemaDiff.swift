@@ -46,54 +46,86 @@ public enum SchemaDiff {
         var facts: [Fact] = []
         let oldTables = Dictionary(uniqueKeysWithValues: old.tables.map { ($0.name.lowercased(), $0) })
         let newTables = Dictionary(uniqueKeysWithValues: new.tables.map { ($0.name.lowercased(), $0) })
-        for t in old.tables where newTables[t.name.lowercased()] == nil { facts.append(Fact(kind: .tableRemoved, severity: .destructive, summary: "table \(t.name) removed (\(t.columns.count) columns)")) }
-        for t in new.tables where oldTables[t.name.lowercased()] == nil { facts.append(Fact(kind: .tableAdded, severity: .info, summary: "table \(t.name) added (\(t.columns.count) columns)")) }
+        for t in old.tables where newTables[t.name.lowercased()] == nil { facts.append(Fact(kind: .tableRemoved, severity: .destructive, summary: String(localized: "table \(t.name) removed (\(t.columns.count) columns)", bundle: .module, comment: "Schema change: a table name, then how many columns it had"))) }
+        for t in new.tables where oldTables[t.name.lowercased()] == nil { facts.append(Fact(kind: .tableAdded, severity: .info, summary: String(localized: "table \(t.name) added (\(t.columns.count) columns)", bundle: .module, comment: "Schema change: a table name, then how many columns it has"))) }
         for t in new.tables {
             guard let o = oldTables[t.name.lowercased()] else { continue }
             let oldCols = Dictionary(uniqueKeysWithValues: o.columns.map { ($0.name.lowercased(), $0) })
             let newCols = Dictionary(uniqueKeysWithValues: t.columns.map { ($0.name.lowercased(), $0) })
-            for c in o.columns where newCols[c.name.lowercased()] == nil { facts.append(Fact(kind: .columnRemoved, severity: .destructive, summary: "column \(t.name).\(c.name) removed")) }
-            for c in t.columns where oldCols[c.name.lowercased()] == nil { facts.append(Fact(kind: .columnAdded, severity: .info, summary: "column \(t.name).\(c.name) added (\(c.type.isEmpty ? "untyped" : c.type)\(c.notNull ? ", NOT NULL" : ""))")) }
+            for c in o.columns where newCols[c.name.lowercased()] == nil { facts.append(Fact(kind: .columnRemoved, severity: .destructive, summary: String(localized: "column \(t.name).\(c.name) removed", bundle: .module, comment: "Schema change: table.column"))) }
+            for c in t.columns where oldCols[c.name.lowercased()] == nil {
+                let type = typeName(c.type)
+                let summary = c.notNull
+                    ? String(localized: "column \(t.name).\(c.name) added (\(type), NOT NULL)", bundle: .module, comment: "Schema change: table.column, then its SQL type; NOT NULL is SQL and stays as is")
+                    : String(localized: "column \(t.name).\(c.name) added (\(type))", bundle: .module, comment: "Schema change: table.column, then its SQL type")
+                facts.append(Fact(kind: .columnAdded, severity: .info, summary: summary))
+            }
             for c in t.columns {
                 guard let oc = oldCols[c.name.lowercased()] else { continue }
-                if oc.type.lowercased() != c.type.lowercased() { facts.append(Fact(kind: .typeChanged, severity: .caution, summary: "column \(t.name).\(c.name) type \(oc.type.isEmpty ? "untyped" : oc.type) → \(c.type.isEmpty ? "untyped" : c.type)")) }
-                if oc.notNull != c.notNull { facts.append(Fact(kind: .nullabilityChanged, severity: c.notNull ? .caution : .info, summary: "column \(t.name).\(c.name) \(c.notNull ? "now NOT NULL" : "now nullable")")) }
-                if oc.pk != c.pk { facts.append(Fact(kind: .keyChanged, severity: .caution, summary: "column \(t.name).\(c.name) \(c.pk ? "is now the primary key" : "no longer the primary key")")) }
+                if oc.type.lowercased() != c.type.lowercased() { facts.append(Fact(kind: .typeChanged, severity: .caution, summary: String(localized: "column \(t.name).\(c.name) type \(typeName(oc.type)) → \(typeName(c.type))", bundle: .module, comment: "Schema change: table.column, then its old SQL type → new SQL type"))) }
+                if oc.notNull != c.notNull { facts.append(Fact(kind: .nullabilityChanged, severity: c.notNull ? .caution : .info, summary: c.notNull
+                    ? String(localized: "column \(t.name).\(c.name) now NOT NULL", bundle: .module, comment: "Schema change: table.column now rejects empty values; NOT NULL is SQL and stays as is")
+                    : String(localized: "column \(t.name).\(c.name) now nullable", bundle: .module, comment: "Schema change: table.column now accepts empty (NULL) values"))) }
+                if oc.pk != c.pk { facts.append(Fact(kind: .keyChanged, severity: .caution, summary: c.pk
+                    ? String(localized: "column \(t.name).\(c.name) is now the primary key", bundle: .module, comment: "Schema change: table.column")
+                    : String(localized: "column \(t.name).\(c.name) no longer the primary key", bundle: .module, comment: "Schema change: table.column"))) }
             }
-            for fk in o.foreignKeys where !t.foreignKeys.contains(fk) { facts.append(Fact(kind: .foreignKeyRemoved, severity: .caution, summary: "foreign key \(t.name).\(fk.column) → \(fk.toTable).\(fk.toColumn) removed")) }
-            for fk in t.foreignKeys where !o.foreignKeys.contains(fk) { facts.append(Fact(kind: .foreignKeyAdded, severity: .info, summary: "foreign key \(t.name).\(fk.column) → \(fk.toTable).\(fk.toColumn) added")) }
+            for fk in o.foreignKeys where !t.foreignKeys.contains(fk) { facts.append(Fact(kind: .foreignKeyRemoved, severity: .caution, summary: String(localized: "foreign key \(t.name).\(fk.column) → \(fk.toTable).\(fk.toColumn) removed", bundle: .module, comment: "Schema change: table.column → referenced table.column"))) }
+            for fk in t.foreignKeys where !o.foreignKeys.contains(fk) { facts.append(Fact(kind: .foreignKeyAdded, severity: .info, summary: String(localized: "foreign key \(t.name).\(fk.column) → \(fk.toTable).\(fk.toColumn) added", bundle: .module, comment: "Schema change: table.column → referenced table.column"))) }
             let oldIdx = Set(o.indexes.map { "\($0.unique)|\($0.columns.joined(separator: ","))" })
             let newIdx = Set(t.indexes.map { "\($0.unique)|\($0.columns.joined(separator: ","))" })
-            for i in o.indexes where !newIdx.contains("\(i.unique)|\(i.columns.joined(separator: ","))") { facts.append(Fact(kind: .indexRemoved, severity: .info, summary: "\(i.unique ? "unique index" : "index") on \(t.name)(\(i.columns.joined(separator: ", "))) removed")) }
-            for i in t.indexes where !oldIdx.contains("\(i.unique)|\(i.columns.joined(separator: ","))") { facts.append(Fact(kind: .indexAdded, severity: .info, summary: "\(i.unique ? "unique index" : "index") on \(t.name)(\(i.columns.joined(separator: ", "))) added")) }
+            for i in o.indexes where !newIdx.contains("\(i.unique)|\(i.columns.joined(separator: ","))") {
+                let cols = i.columns.joined(separator: ", ")
+                facts.append(Fact(kind: .indexRemoved, severity: .info, summary: i.unique
+                    ? String(localized: "unique index on \(t.name)(\(cols)) removed", bundle: .module, comment: "Schema change: table(columns)")
+                    : String(localized: "index on \(t.name)(\(cols)) removed", bundle: .module, comment: "Schema change: table(columns)")))
+            }
+            for i in t.indexes where !oldIdx.contains("\(i.unique)|\(i.columns.joined(separator: ","))") {
+                let cols = i.columns.joined(separator: ", ")
+                facts.append(Fact(kind: .indexAdded, severity: .info, summary: i.unique
+                    ? String(localized: "unique index on \(t.name)(\(cols)) added", bundle: .module, comment: "Schema change: table(columns)")
+                    : String(localized: "index on \(t.name)(\(cols)) added", bundle: .module, comment: "Schema change: table(columns)")))
+            }
         }
         return facts
+    }
+
+    /// A column's declared type, or "untyped" when it declares none.
+    private static func typeName(_ type: String) -> String {
+        type.isEmpty ? String(localized: "untyped", bundle: .module, comment: "Schema change: stands in for a column's SQL type when it declares none") : type
     }
 
     /// "Schema: 1 table removed, 2 columns removed, 1 type change, 1 index added".
     public static func headline(_ facts: [Fact]) -> String? {
         guard !facts.isEmpty else { return nil }
         var parts: [String] = []
-        func count(_ kinds: [Kind], _ one: String, _ many: String) {
+        func count(_ kinds: [Kind], _ phrase: (Int) -> String) {
             let n = facts.filter { kinds.contains($0.kind) }.count
-            if n > 0 { parts.append("\(n) \(n == 1 ? one : many)") }
+            if n > 0 { parts.append(phrase(n)) }
         }
-        count([.tableRemoved], "table removed", "tables removed")
-        count([.tableAdded], "table added", "tables added")
-        count([.columnRemoved], "column removed", "columns removed")
-        count([.columnAdded], "column added", "columns added")
-        count([.typeChanged], "type change", "type changes")
-        count([.nullabilityChanged], "nullability change", "nullability changes")
-        count([.keyChanged], "key change", "key changes")
-        count([.foreignKeyRemoved, .foreignKeyAdded], "foreign key change", "foreign key changes")
-        count([.indexRemoved, .indexAdded], "index change", "index changes")
-        return "Schema: " + parts.joined(separator: ", ")
+        count([.tableRemoved]) { String(localized: "\($0) tables removed", bundle: .module, comment: "Schema summary clause on a changed schema file; the argument is a count") }
+        count([.tableAdded]) { String(localized: "\($0) tables added", bundle: .module, comment: "Schema summary clause on a changed schema file; the argument is a count") }
+        count([.columnRemoved]) { String(localized: "\($0) columns removed", bundle: .module, comment: "Schema summary clause on a changed schema file; the argument is a count") }
+        count([.columnAdded]) { String(localized: "\($0) columns added", bundle: .module, comment: "Schema summary clause on a changed schema file; the argument is a count") }
+        count([.typeChanged]) { String(localized: "\($0) type changes", bundle: .module, comment: "Schema summary clause on a changed schema file; the argument is a count") }
+        count([.nullabilityChanged]) { String(localized: "\($0) nullability changes", bundle: .module, comment: "Schema summary clause on a changed schema file; the argument is a count") }
+        count([.keyChanged]) { String(localized: "\($0) key changes", bundle: .module, comment: "Schema summary clause on a changed schema file; the argument is a count") }
+        count([.foreignKeyRemoved, .foreignKeyAdded]) { String(localized: "\($0) foreign key changes", bundle: .module, comment: "Schema summary clause on a changed schema file; the argument is a count") }
+        count([.indexRemoved, .indexAdded]) { String(localized: "\($0) index changes", bundle: .module, comment: "Schema summary clause on a changed schema file; the argument is a count") }
+        let clauses = parts.joined(separator: ", ")
+        return String(localized: "Schema: \(clauses)", bundle: .module,
+                      comment: "Headline on a changed schema file; the argument is a comma-separated list of counted changes")
     }
 
     /// The badge's tool tip: the headline, then every fact.
     public static func tooltip(_ facts: [Fact]) -> String? {
         guard let head = headline(facts) else { return nil }
-        return head + " — " + facts.prefix(12).map(\.summary).joined(separator: "; ") + (facts.count > 12 ? "; and \(facts.count - 12) more" : "")
+        var list = facts.prefix(12).map(\.summary).joined(separator: "; ")
+        if facts.count > 12 {
+            list = String(localized: "\(list); and \(facts.count - 12) more", bundle: .module,
+                          comment: "A shortened list: the first argument is a semicolon-separated list of changes, the second how many more were left out")
+        }
+        return head + " — " + list
     }
 
     /// The facts between two texts of the same schema file; empty when either is not a schema

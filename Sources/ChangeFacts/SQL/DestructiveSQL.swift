@@ -100,7 +100,9 @@ public enum DestructiveSQL {
         if isDatabaseDump(text) {
             let drops = matches(of: #"(?i)\bDROP\s+TABLE\b"#, in: text).count
             let f = Finding(line: 1, endLine: 1, severity: .destructive,
-                            summary: "database dump" + (drops > 0 ? " (\(drops) DROP TABLE)" : ""))
+                            summary: drops > 0
+                                ? String(localized: "database dump (\(drops) DROP TABLE)", bundle: .module, comment: "SQL finding: a database dump file, then how many DROP TABLE statements it has (SQL, stays as is)")
+                                : String(localized: "database dump", bundle: .module, comment: "SQL finding: the file is a database dump"))
             if let addedLines, !addedLines.isEmpty, addedLines.min()! > 200 { return [] }   // an edit deep in an existing dump
             return [f]
         }
@@ -126,18 +128,26 @@ public enum DestructiveSQL {
         for m in matches(of: #"(?i)\bDELETE\s+FROM\s+(?:ONLY\s+)?((?:[\w"`\[\]]+\.)?[\w"`\[\]]+)"#, in: clean) {
             let body = statementBody(from: m.range.location, in: clean, dialect: dialect)
             if let why = unconditioned(body) {
-                out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location + body.count), severity: .destructive, summary: "DELETE \(why) on \(ident(m, 1, clean))"))
+                let table = ident(m, 1, clean)
+                let summary = why == "WHERE 1=1"
+                    ? String(localized: "DELETE WHERE 1=1 on \(table)", bundle: .module, comment: "SQL finding: a DELETE whose WHERE matches every row; the argument is a table name. SQL words stay as is")
+                    : String(localized: "DELETE without WHERE on \(table)", bundle: .module, comment: "SQL finding: a DELETE with no WHERE clause; the argument is a table name. SQL words stay as is")
+                out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location + body.count), severity: .destructive, summary: summary))
             }
         }
         for m in matches(of: #"(?i)\bUPDATE\s+(?:ONLY\s+)?((?:[\w"`\[\]]+\.)?[\w"`\[\]]+)\s+SET\b"#, in: clean) {
             let body = statementBody(from: m.range.location, in: clean, dialect: dialect)
             if let why = unconditioned(body) {
-                out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location + body.count), severity: .destructive, summary: "UPDATE \(why) on \(ident(m, 1, clean))"))
+                let table = ident(m, 1, clean)
+                let summary = why == "WHERE 1=1"
+                    ? String(localized: "UPDATE WHERE 1=1 on \(table)", bundle: .module, comment: "SQL finding: an UPDATE whose WHERE matches every row; the argument is a table name. SQL words stay as is")
+                    : String(localized: "UPDATE without WHERE on \(table)", bundle: .module, comment: "SQL finding: an UPDATE with no WHERE clause; the argument is a table name. SQL words stay as is")
+                out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location + body.count), severity: .destructive, summary: summary))
             }
         }
         for m in matches(of: #"(?i)\bALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?((?:[\w"`\[\]]+\.)?[\w"`\[\]]+)\b[^;]*?\b(?:ALTER\s+(?:COLUMN\s+)?([\w"`\[\]]+)\s+(?:SET\s+DATA\s+)?TYPE\b|MODIFY\s+(?:COLUMN\s+)?([\w"`\[\]]+)\s+\w|CHANGE\s+(?:COLUMN\s+)?([\w"`\[\]]+)\s+[\w"`\[\]]+\s+\w|ALTER\s+COLUMN\s+([\w"`\[\]]+)\s+(?:VARCHAR|NVARCHAR|CHAR|INT|BIGINT|SMALLINT|TINYINT|DECIMAL|NUMERIC|FLOAT|REAL|TEXT|DATE|DATETIME|TIMESTAMP|BOOLEAN|BIT|UUID|JSON|JSONB|BLOB|BYTEA)\b)"#, in: clean) {
             let column = [2, 3, 4, 5].compactMap { m.range(at: $0).location == NSNotFound ? nil : ident(m, $0, clean) }.first ?? "?"
-            out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location + m.range.length), severity: .caution, summary: "column type changed: \(ident(m, 1, clean)).\(column)"))
+            out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location + m.range.length), severity: .caution, summary: typeChanged("\(ident(m, 1, clean)).\(column)")))
         }
 
         // --- Migration DSLs
@@ -147,36 +157,36 @@ public enum DestructiveSQL {
             (#"\bdrop_table[\s(]+:?["']?(\w+)"#, .destructive, { "drop_table \(ident($0, 1, clean))" }),
             (#"\bremove_columns?[\s(]+:?["']?(\w+)["']?\s*,\s*:?["']?(\w+)"#, .destructive, { "remove_column \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
             (#"\bremove_(?:reference|belongs_to)[\s(]+:?["']?(\w+)["']?\s*,\s*:?["']?(\w+)"#, .destructive, { "remove_reference \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
-            (#"\bchange_column[\s(]+:?["']?(\w+)["']?\s*,\s*:?["']?(\w+)"#, .caution, { "column type changed: \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
+            (#"\bchange_column[\s(]+:?["']?(\w+)["']?\s*,\s*:?["']?(\w+)"#, .caution, { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }),
         ]
         case .python: dsl = [
             (#"migrations\.DeleteModel\(\s*(?:name\s*=\s*)?["'](\w+)"#, .destructive, { "DeleteModel \(ident($0, 1, clean))" }),
             (#"migrations\.RemoveField\(\s*(?:model_name\s*=\s*)?["'](\w+)["']\s*,\s*(?:name\s*=\s*)?["'](\w+)"#, .destructive, { "RemoveField \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
-            (#"migrations\.AlterField\(\s*(?:model_name\s*=\s*)?["'](\w+)["']\s*,\s*(?:name\s*=\s*)?["'](\w+)"#, .caution, { "column type changed: \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
+            (#"migrations\.AlterField\(\s*(?:model_name\s*=\s*)?["'](\w+)["']\s*,\s*(?:name\s*=\s*)?["'](\w+)"#, .caution, { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }),
             (#"\bop\.drop_table\(\s*["'](\w+)"#, .destructive, { "op.drop_table \(ident($0, 1, clean))" }),
             (#"\bop\.drop_column\(\s*["'](\w+)["']\s*,\s*["'](\w+)"#, .destructive, { "op.drop_column \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
-            (#"\bop\.alter_column\(\s*["'](\w+)["']\s*,\s*["'](\w+)["'][^)]*\btype_\s*="#, .caution, { "column type changed: \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
+            (#"\bop\.alter_column\(\s*["'](\w+)["']\s*,\s*["'](\w+)["'][^)]*\btype_\s*="#, .caution, { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }),
         ]
         case .javascript: dsl = [
             (#"\.dropTable(?:IfExists)?\(\s*["'`](\w+)"#, .destructive, { "dropTable \(ident($0, 1, clean))" }),
             (#"\.dropColumns?\(\s*\[?\s*["'`](\w+)"#, .destructive, { "dropColumn \(ident($0, 1, clean))" }),
             (#"\.removeColumn\(\s*["'`](\w+)["'`]\s*,\s*["'`](\w+)"#, .destructive, { "removeColumn \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
-            (#"\.changeColumn\(\s*["'`](\w+)["'`]\s*,\s*["'`](\w+)"#, .caution, { "column type changed: \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
+            (#"\.changeColumn\(\s*["'`](\w+)["'`]\s*,\s*["'`](\w+)"#, .caution, { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }),
         ]
         case .php: dsl = [
             (#"Schema::drop(?:IfExists)?\(\s*["'](\w+)"#, .destructive, { "Schema::drop \(ident($0, 1, clean))" }),
             (#"->dropColumn\(\s*\[?\s*["'](\w+)"#, .destructive, { "dropColumn \(ident($0, 1, clean))" }),
-            (#"\$table->\w+\(\s*["'](\w+)["'][^;]*?->change\(\)"#, .caution, { "column type changed: \(ident($0, 1, clean))" }),
+            (#"\$table->\w+\(\s*["'](\w+)["'][^;]*?->change\(\)"#, .caution, { typeChanged(ident($0, 1, clean)) }),
         ]
         case .elixir: dsl = [
             (#"\bdrop(?:_if_exists)?\s+(?:if_exists\s+)?table\(\s*:?["']?(\w+)"#, .destructive, { "drop table \(ident($0, 1, clean))" }),
             (#"^\s*remove\s+:(\w+)"#, .destructive, { "remove :\(ident($0, 1, clean))" }),
-            (#"^\s*modify\s+:(\w+)"#, .caution, { "column type changed: \(ident($0, 1, clean))" }),
+            (#"^\s*modify\s+:(\w+)"#, .caution, { typeChanged(ident($0, 1, clean)) }),
         ]
         case .csharp: dsl = [
             (#"\.DropTable\(\s*(?:name\s*:\s*)?"(\w+)"#, .destructive, { "DropTable \(ident($0, 1, clean))" }),
             (#"\.DropColumn(?:<\w+>)?\(\s*(?:name\s*:\s*)?"(\w+)""#, .destructive, { "DropColumn \(ident($0, 1, clean))" }),
-            (#"\.AlterColumn<\w+>\(\s*(?:name\s*:\s*)?"(\w+)""#, .caution, { "column type changed: \(ident($0, 1, clean))" }),
+            (#"\.AlterColumn<\w+>\(\s*(?:name\s*:\s*)?"(\w+)""#, .caution, { typeChanged(ident($0, 1, clean)) }),
         ]
         default: dsl = []
         }
@@ -207,29 +217,51 @@ public enum DestructiveSQL {
         case .javascript:
             let up = has(#"\b(?:exports\.up|export\s+(?:const|async\s+function|function)\s+up|async\s+up\s*\(|\bup\s*:\s*async|\bup\s*\()"#)
             let down = has(#"\b(?:exports\.down|export\s+(?:const|async\s+function|function)\s+down|async\s+down\s*\(|\bdown\s*:\s*async|\bdown\s*\()"#)
-            if up && !down { return "no down migration" }
-            if up, has(#"\b(?:async\s+)?down\s*\([^)]*\)\s*(?::\s*\w+(?:<\w+>)?\s*)?\{\s*\}"#) { return "down migration is empty" }
+            if up && !down { return noDownMigration }
+            if up, has(#"\b(?:async\s+)?down\s*\([^)]*\)\s*(?::\s*\w+(?:<\w+>)?\s*)?\{\s*\}"#) { return downMigrationIsEmpty }
         case .python:
-            if has(#"\bdef\s+upgrade\s*\("#), has(#"\bdef\s+downgrade\s*\([^)]*\)\s*(?:->\s*\w+\s*)?:\s*(?:#[^\n]*\n\s*)?pass\b"#) { return "downgrade is a pass" }
-            if has(#"\bdef\s+upgrade\s*\("#), !has(#"\bdef\s+downgrade\s*\("#) { return "no downgrade" }
+            if has(#"\bdef\s+upgrade\s*\("#), has(#"\bdef\s+downgrade\s*\([^)]*\)\s*(?:->\s*\w+\s*)?:\s*(?:#[^\n]*\n\s*)?pass\b"#) { return String(localized: "downgrade is a pass", bundle: .module, comment: "Migration finding: the Python downgrade function only says pass, so it undoes nothing") }
+            if has(#"\bdef\s+upgrade\s*\("#), !has(#"\bdef\s+downgrade\s*\("#) { return String(localized: "no downgrade", bundle: .module, comment: "Migration finding: the Python migration has no downgrade function") }
         case .ruby:
-            if has(#"\bdef\s+up\b"#), !has(#"\bdef\s+down\b"#) { return "no down migration" }
+            if has(#"\bdef\s+up\b"#), !has(#"\bdef\s+down\b"#) { return noDownMigration }
         case .php:
-            if has(#"function\s+up\s*\("#), !has(#"function\s+down\s*\("#) { return "no down migration" }
-            if has(#"function\s+down\s*\([^)]*\)(?:\s*:\s*void)?\s*\{\s*\}"#) { return "down migration is empty" }
+            if has(#"function\s+up\s*\("#), !has(#"function\s+down\s*\("#) { return noDownMigration }
+            if has(#"function\s+down\s*\([^)]*\)(?:\s*:\s*void)?\s*\{\s*\}"#) { return downMigrationIsEmpty }
         default: break
         }
         return nil
+    }
+
+    /// The finding for a column whose type changed; `target` is `table.column` or `column`.
+    private static func typeChanged(_ target: String) -> String {
+        String(localized: "column type changed: \(target)", bundle: .module, comment: "SQL finding: a column's type was changed; the argument is table.column or a column name")
+    }
+
+    /// The finding for a migration with an up step and no down step.
+    private static var noDownMigration: String {
+        String(localized: "no down migration", bundle: .module, comment: "Migration finding: the migration can be applied but has no step to undo it")
+    }
+
+    /// The finding for a migration whose down step does nothing.
+    private static var downMigrationIsEmpty: String {
+        String(localized: "down migration is empty", bundle: .module, comment: "Migration finding: the migration's undo step is empty")
     }
 
     /// "Destructive SQL added — line 12: DROP TABLE users; line 30: DELETE without WHERE on sessions".
     public static func tooltip(for findings: [Finding]) -> String? {
         guard !findings.isEmpty else { return nil }
         let destructive = findings.filter { $0.severity == .destructive }.count
-        let head = destructive > 0 ? "Destructive SQL added" : "SQL caution added"
-        let shown = findings.prefix(6).map { "line \($0.line): \($0.summary)" }
-        let more = findings.count > 6 ? "; and \(findings.count - 6) more" : ""
-        return head + " — " + shown.joined(separator: "; ") + more
+        let head = destructive > 0
+            ? String(localized: "Destructive SQL added", bundle: .module, comment: "Tool-tip headline on a changed file whose new SQL can lose data")
+            : String(localized: "SQL caution added", bundle: .module, comment: "Tool-tip headline on a changed file whose new SQL may lose data")
+        var list = findings.prefix(6).map {
+            String(localized: "line \(String($0.line)): \($0.summary)", bundle: .module, comment: "One SQL finding in a tool-tip: the line number, then what was found")
+        }.joined(separator: "; ")
+        if findings.count > 6 {
+            list = String(localized: "\(list); and \(findings.count - 6) more", bundle: .module,
+                          comment: "A shortened list: the first argument is a semicolon-separated list of changes, the second how many more were left out")
+        }
+        return head + " — " + list
     }
 
     // MARK: - Diff chunks (All Changes, diff tabs)

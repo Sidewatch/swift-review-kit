@@ -97,10 +97,10 @@ final class SchemaTests: XCTestCase {
         XCTAssertTrue(SchemaDiff.tooltip(facts)?.contains("column users.legacy_id removed") == true)
         XCTAssertTrue(SchemaDiff.compare(old: old, new: old).isEmpty, "no change is no fact")
         XCTAssertEqual(SchemaDiff.compare(old: SchemaModel.load(ddl: "CREATE TABLE a (id int);"), new: SchemaModel.load(ddl: "CREATE TABLE b (id int);")).map(\.summary),
-                       ["table a removed (1 columns)", "table b added (1 columns)"], "a rename reads as a removal and an addition")
+                       ["table a removed (1 column)", "table b added (1 column)"], "a rename reads as a removal and an addition")
         XCTAssertEqual(SchemaDiff.compare(old: SchemaModel.load(ddl: "CREATE TABLE a (id int, x text);"), new: SchemaModel.load(ddl: "CREATE TABLE a (id int, x text not null, y int references b(id));")).map(\.summary),
                        ["column a.y added (INT)", "column a.x now NOT NULL", "foreign key a.y → b.id added"])
-        XCTAssertEqual(SchemaDiff.facts(oldText: "", newText: "CREATE TABLE t (id int);", path: "schema.sql").map(\.summary), ["table t added (1 columns)"], "an untracked schema is all additions")
+        XCTAssertEqual(SchemaDiff.facts(oldText: "", newText: "CREATE TABLE t (id int);", path: "schema.sql").map(\.summary), ["table t added (1 column)"], "an untracked schema is all additions")
         XCTAssertTrue(SchemaDiff.facts(oldText: nil, newText: "hello", path: "notes.md").isEmpty)
     }
 }
