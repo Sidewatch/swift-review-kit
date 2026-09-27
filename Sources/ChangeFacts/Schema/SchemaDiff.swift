@@ -18,7 +18,12 @@ public enum SchemaDiff {
     /// How much a fact can cost: data lost, data possibly lost, or nothing lost.
     public enum Severity: Sendable, Equatable { case destructive, caution, info }
     /// What changed, one case per kind of fact.
-    public enum Kind: Sendable, Equatable { case tableRemoved, tableAdded, columnRemoved, columnAdded, typeChanged, nullabilityChanged, keyChanged, foreignKeyRemoved, foreignKeyAdded, indexRemoved, indexAdded }
+    public enum Kind: Sendable, Equatable {
+        case tableRemoved, tableAdded
+        case columnRemoved, columnAdded, typeChanged, nullabilityChanged, keyChanged
+        case foreignKeyRemoved, foreignKeyAdded
+        case indexRemoved, indexAdded
+    }
     /// One change between the schemas.
     public struct Fact: Equatable, Sendable {
         /// What changed.
@@ -27,7 +32,13 @@ public enum SchemaDiff {
         public let severity: Severity
         /// The fact as a phrase, e.g. "column users.bio removed".
         public let summary: String
-       ; public init(kind: Kind, severity: Severity, summary: String) { self.kind = kind; self.severity = severity; self.summary = summary }
+
+        /// Creates a fact.
+        public init(kind: Kind, severity: Severity, summary: String) {
+            self.kind = kind
+            self.severity = severity
+            self.summary = summary
+        }
     }
 
     /// Every fact between two models, tables matched by case-insensitive name.

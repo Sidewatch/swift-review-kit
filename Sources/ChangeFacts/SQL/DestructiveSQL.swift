@@ -34,7 +34,14 @@ public enum DestructiveSQL {
         public let severity: Severity
         /// "DROP TABLE users", "DELETE without WHERE on sessions", "column type changed: users.email".
         public let summary: String
-       ; public init(line: Int, endLine: Int, severity: Severity, summary: String) { self.line = line; self.endLine = endLine; self.severity = severity; self.summary = summary }
+
+        /// Creates a finding.
+        public init(line: Int, endLine: Int, severity: Severity, summary: String) {
+            self.line = line
+            self.endLine = endLine
+            self.severity = severity
+            self.summary = summary
+        }
     }
 
     /// Which comment and string rules to read the file with. `nil`: not a file SQL runs from.
