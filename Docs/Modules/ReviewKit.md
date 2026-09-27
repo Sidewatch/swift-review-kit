@@ -1,6 +1,6 @@
 # Swift Review Kit
 
-A tiny, dependency-free model layer for a code-review pass over a set of changed files — collect line-pinned comments and emit them as one clean markdown block, and track which files you've marked *reviewed* across relaunches. The verify-what-changed core behind Sidewatch's "Send to Agent" surface.
+A small model layer for a code-review pass over a set of changed files — collect line-pinned comments and emit them as one clean markdown block, and track which files you've marked *reviewed* across relaunches. The verify-what-changed core behind Sidewatch's "Send to Agent" surface.
 
 ## Features
 
@@ -10,7 +10,7 @@ A tiny, dependency-free model layer for a code-review pass over a set of changed
 - ✅ **Reviewed set** — `ReviewSession.toggle(_:)` / `markReviewed(_:_:)` / `reviewedCount(in:)` to walk a change set to completion (N of M)
 - 💾 **Per-repo persistence** — `ReviewSession.setRepo(_:)` scopes the reviewed set per repository; it survives relaunch via `UserDefaults`
 - 🧹 **Prune** — `ReviewSession.prune(to:)` drops reviewed entries no longer in the live change set
-- 🪶 **Zero dependencies** — Foundation only
+- 🪶 **Small** — Foundation plus swift-foundation-extensions (FoundationExtensions, ProcessRunner)
 - 🍎 **Cross-platform** — iOS, macOS, tvOS, watchOS, visionOS
 
 ## Requirements
