@@ -12,14 +12,9 @@
 import Foundation
 import FoundationExtensions
 
-/// A batch of review notes accumulated across files during one review pass, then
-/// emitted as a single structured markdown block into the terminal for the agent
-/// to act on. Part of the "Send to Agent" surface — Sidewatch composes precise
-/// feedback; the terminal agent does the editing.
-/// - Note: `@MainActor` states what was already true rather than adding a constraint —
-///   this is UI state, and every caller in the app reaches it from the main thread
-///   (verified: no call site sits inside a background dispatch). Isolating it makes the
-///   compiler enforce that, instead of it holding by convention.
+/// A batch of review notes accumulated across files during one review pass, then emitted as
+/// a single structured markdown block into the terminal for the agent to act on: the app
+/// composes precise feedback, the terminal agent does the editing. Main-actor UI state.
 @MainActor
 public final class ReviewDraft {
 
@@ -41,21 +36,10 @@ public final class ReviewDraft {
     public func remove(at i: Int) { guard comments.indices.contains(i) else { return }; comments.remove(at: i); onChange?() }
 
     /// Moves every note in `file` to follow a text edit, so a note stays on the code it was
-    /// written about after lines are inserted or deleted above it.
-    ///
-    /// Without this a note's line is frozen at the moment it was typed: insert ten lines above
-    /// it and clicking it in the sidebar jumps ten lines short, and any per-line marker drawn
-    /// for it points at the wrong code. See ``ReviewComment/remappingLines(editLine:spanEndLine:lineDelta:)``
-    /// for the rule, which is deliberately the same one the editor applies to its diff bands.
-    ///
-    /// ``onChange`` fires only when something actually moved, so a keystroke that changes no
-    /// line numbers costs one pass and no redraw.
-    ///
-    /// - Parameters:
-    ///   - file: The file whose notes should move; notes for other files are untouched.
-    ///   - editLine: 1-based line the edit began on.
-    ///   - spanEndLine: 1-based line the replaced span ended on.
-    ///   - lineDelta: Lines gained (positive) or lost (negative) by the document.
+    /// written about after lines are inserted or deleted above it. The rule is
+    /// ``ReviewComment/remappingLines(editLine:spanEndLine:lineDelta:)``, the same one the
+    /// editor applies to its diff bands (lines 1-based). ``onChange`` fires only when
+    /// something moved; notes for other files are untouched.
     public func remapLines(inFile file: String, editLine: Int, spanEndLine: Int, lineDelta: Int) {
         guard lineDelta != 0 else { return }
         var moved = false
@@ -85,8 +69,7 @@ public final class ReviewDraft {
     /// The comments grouped by file, each file's notes sorted by line — the block sent to the agent.
     ///
     /// A note that carries a ``ReviewComment/hunk`` quotes it as a fenced block indented into
-    /// the list item, so the agent sees the exact source the note is about. Notes without one
-    /// emit precisely as before.
+    /// the list item, so the agent sees the exact source the note is about.
     ///
     /// - Returns: A markdown string, or an empty string when there are no comments.
     public func markdown() -> String {

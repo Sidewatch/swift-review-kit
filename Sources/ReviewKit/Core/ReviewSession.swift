@@ -11,17 +11,11 @@
 
 import Foundation
 
-/// Run-scoped review state: which changed files you've marked *reviewed*.
-/// Turns "a pile of diffs" into a session you can walk to completion (N of M).
-/// Persisted per-repo so a review survives relaunch; pruned to the live change set.
+/// Run-scoped review state: which changed files are marked *reviewed*, so a pile of diffs
+/// becomes a session walked to completion (N of M). Per-repo, pruned to the live change set.
 ///
-/// - Note: State is persisted synchronously to `UserDefaults.standard` (key
-///   `sidewatch.reviewSession`) on every mutation. Not thread-safe — call from
-///   one thread (in practice, the main thread).
-/// - Note: `@MainActor` states what was already true rather than adding a constraint —
-///   this is UI state, and every caller in the app reaches it from the main thread
-///   (verified: no call site sits inside a background dispatch). Isolating it makes the
-///   compiler enforce that, instead of it holding by convention.
+/// - Note: Main-actor UI state, persisted synchronously to `UserDefaults.standard` (key
+///   `sidewatch.reviewSession`) on every mutation, so a review survives relaunch.
 @MainActor
 public final class ReviewSession {
 

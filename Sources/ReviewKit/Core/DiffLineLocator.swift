@@ -16,9 +16,13 @@ import Foundation
 public enum DiffLineLocator {
     /// A located diff line: where it lives in the file and what it says.
     public struct Located: Equatable, Sendable {
+        /// The 1-based line in the new file (old file for a removed line).
         public let line: Int
+        /// "+", "-" or " ": added, removed or context.
         public let side: String
+        /// The line's text without its diff marker.
         public let text: String
+        /// A located line.
         public init(line: Int, side: String, text: String) { self.line = line; self.side = side; self.text = text }
     }
 

@@ -38,27 +38,11 @@ public struct ReviewComment {
     /// The reviewer's message.
     public var note: String
 
-    /// A copy of this comment with its line numbers moved to follow a text edit.
-    ///
-    /// The three parameters are the editor's own: `editLine` is the line the edit began on,
-    /// `spanEndLine` the line the replaced span ended on, and `lineDelta` how many lines the
-    /// document gained (or lost). The rule matches what a code editor does to any other
-    /// per-line decoration:
-    ///
-    ///   • at or above the edit  → unchanged
-    ///   • below the replaced span → shifted by `lineDelta`
-    ///   • INSIDE the replaced span → clamped to `editLine`
-    ///
-    /// That last case is the one worth stating. A diff band whose anchor text was replaced can
-    /// safely be dropped, because a git refresh restores it. A review note cannot: it is
-    /// something a person typed, and losing it silently is worse than pinning it a few lines
-    /// off. So it survives, anchored where the edit began.
-    ///
-    /// - Parameters:
-    ///   - editLine: 1-based line the edit began on.
-    ///   - spanEndLine: 1-based line the replaced span ended on.
-    ///   - lineDelta: Lines gained (positive) or lost (negative) by the document.
-    /// - Returns: The remapped copy; `self` when nothing moved.
+    /// A copy of this comment with its line numbers moved to follow a text edit: at or above
+    /// the edit → unchanged; below the replaced span → shifted by `lineDelta`; INSIDE the span
+    /// → clamped to `editLine`. Unlike a diff band (which a git refresh restores), a note is
+    /// something a person typed, so it survives the replacement, anchored where the edit began.
+    /// `editLine` and `spanEndLine` are 1-based; `lineDelta` is lines gained (negative: lost).
     public func remappingLines(editLine: Int, spanEndLine: Int, lineDelta: Int) -> ReviewComment {
         guard lineDelta != 0 else { return self }
         func moved(_ n: Int) -> Int {
@@ -84,15 +68,8 @@ public struct ReviewComment {
         self.init(file: file, line: line, endLine: nil, hunk: nil, severity: severity, note: note)
     }
 
-    /// Creates a review comment, optionally spanning a range and quoting its source.
-    ///
-    /// - Parameters:
-    ///   - file: The path of the file the note refers to.
-    ///   - line: The first line the note covers.
-    ///   - endLine: The last line covered, or `nil` when the note is a single line.
-    ///   - hunk: The source the note refers to, or `nil` to quote nothing.
-    ///   - severity: How strongly the note wants the agent to act.
-    ///   - note: The reviewer's message.
+    /// Creates a review comment, optionally spanning `line...endLine` and quoting its source
+    /// as `hunk`.
     public init(file: String, line: Int, endLine: Int?, hunk: String?,
                 severity: ReviewSeverity, note: String) {
         self.file = file
