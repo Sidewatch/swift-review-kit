@@ -2,10 +2,11 @@
 //  DependencyChangesTests.swift
 //  ChangeFactsTests
 //
-//  Created by David Sherlock on 9/22/26.
-//
 //  Every manifest parser, the facts (adds, removes, bumps) and the headline. Ported from
 //  Sidewatch's `--selftest-change-facts` on 22 Sep 2026.
+//
+//  Created by David Sherlock on 9/22/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

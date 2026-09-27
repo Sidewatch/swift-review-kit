@@ -5,6 +5,7 @@
 //  The test runs a shell line made and what each reported, read from the runner's own summary.
 //
 //  Created by David Sherlock on 9/21/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

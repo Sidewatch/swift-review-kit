@@ -5,6 +5,7 @@
 //  Every match of a pattern as its capture groups, the one regex idiom the readers share.
 //
 //  Created by David Sherlock on 9/22/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

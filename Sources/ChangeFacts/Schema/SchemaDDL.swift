@@ -6,6 +6,7 @@
 //  ER diagram and the schema diff already understand.
 //
 //  Created by David Sherlock on 9/20/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

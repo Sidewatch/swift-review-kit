@@ -6,6 +6,7 @@
 //  it starts calling.
 //
 //  Created by David Sherlock on 9/21/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

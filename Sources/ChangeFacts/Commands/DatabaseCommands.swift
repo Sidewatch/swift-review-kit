@@ -6,6 +6,7 @@
 //  a severity: what the SQL they carry is, or what the subcommand does by its own documentation.
 //
 //  Created by David Sherlock on 9/20/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

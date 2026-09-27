@@ -5,6 +5,7 @@
 //  A schema as structure — tables, columns, keys, indexes — and the diff of two of them as facts.
 //
 //  Created by David Sherlock on 9/20/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

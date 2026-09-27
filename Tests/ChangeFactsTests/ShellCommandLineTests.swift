@@ -6,6 +6,7 @@
 //  front once the wrappers are peeled.
 //
 //  Created by David Sherlock on 9/22/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

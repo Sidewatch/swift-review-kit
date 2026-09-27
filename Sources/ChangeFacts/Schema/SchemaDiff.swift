@@ -5,6 +5,7 @@
 //  What changed between two schemas, as facts a reviewer can hold against a migration.
 //
 //  Created by David Sherlock on 9/20/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

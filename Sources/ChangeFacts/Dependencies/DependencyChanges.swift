@@ -5,6 +5,7 @@
 //  What a manifest change did to the project's dependencies, by name: adds, removes, bumps.
 //
 //  Created by David Sherlock on 9/21/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

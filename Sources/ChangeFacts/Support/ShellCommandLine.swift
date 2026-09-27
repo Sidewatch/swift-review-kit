@@ -6,6 +6,7 @@
 //  segment invokes once the wrappers agents type are peeled.
 //
 //  Created by David Sherlock on 9/20/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

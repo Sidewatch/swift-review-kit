@@ -2,10 +2,11 @@
 //  AddedLineSurfaceTests.swift
 //  ChangeFactsTests
 //
-//  Created by David Sherlock on 9/22/26.
-//
 //  Environment names and hosts on added lines, per language; minus what HEAD already used.
 //  Ported from Sidewatch's `--selftest-change-facts` on 22 Sep 2026.
+//
+//  Created by David Sherlock on 9/22/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

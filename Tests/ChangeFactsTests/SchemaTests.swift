@@ -2,11 +2,12 @@
 //  SchemaTests.swift
 //  ChangeFactsTests
 //
-//  Created by David Sherlock on 9/22/26.
-//
 //  The same data model read three ways (Prisma, Rails schema.rb, Django models.py) into one
 //  structure, the tolerant DDL build, and the diff's facts, severities and headline. Ported
 //  from Sidewatch's `--selftest-schema` on 22 Sep 2026.
+//
+//  Created by David Sherlock on 9/22/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest
