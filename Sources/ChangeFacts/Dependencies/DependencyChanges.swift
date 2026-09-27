@@ -20,12 +20,19 @@ import Foundation
 /// removes lodash; bumps axios 1.6 → 1.7". What the package IS is the reviewer's to find out.
 public enum DependencyChanges {
 
+    /// One dependency the change added, removed or bumped.
     public struct Fact: Equatable, Sendable {
+        /// What happened to the dependency.
         public enum Kind: Sendable, Equatable { case added, removed, changed }
+        /// Whether it was added, removed or bumped.
         public let kind: Kind
+        /// The dependency's name as the manifest declares it.
         public let name: String
+        /// The version spec after the change; nil for a removal, "" when the manifest gives none.
         public let version: String?
+        /// The version spec before the change; nil for an addition.
         public let oldVersion: String?
+        /// The fact as a phrase: "adds left-pad 1.3.0", "removes lodash", "bumps axios 1.6 → 1.7".
         public var summary: String {
             switch kind {
             case .added: return "adds \(name)" + (version.map { $0.isEmpty ? "" : " \($0)" } ?? "")
@@ -33,12 +40,15 @@ public enum DependencyChanges {
             case .changed: return "bumps \(name) \(oldVersion ?? "?") → \(version ?? "?")"
             }
         }
+        /// Creates a fact from its parts.
         public init(kind: Kind, name: String, version: String?, oldVersion: String?) { self.kind = kind; self.name = name; self.version = version; self.oldVersion = oldVersion }
     }
 
+    /// Lockfile names, whose changes follow their manifest and are never read as facts.
     public static let lockfiles: Set<String> = ["Package.resolved", "Podfile.lock", "Cartfile.resolved", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb",
                                          "Cargo.lock", "go.sum", "Gemfile.lock", "poetry.lock", "Pipfile.lock", "uv.lock", "composer.lock", "gradle.lockfile",
                                          "pubspec.lock", "mix.lock", "Gopkg.lock", "deno.lock"]
+    /// Whether `path`'s last component is one of ``lockfiles``.
     public static func isLockfile(_ path: String) -> Bool { lockfiles.contains((path as NSString).lastPathComponent) }
 
     /// name → version spec ("" when the manifest gives none), or nil when the file is not a

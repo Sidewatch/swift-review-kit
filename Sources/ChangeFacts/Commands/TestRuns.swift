@@ -10,16 +10,12 @@
 
 import Foundation
 
-/// The test runs a shell line shows — `swift test`, `npm test`, `pytest`, `go test`, `cargo
-/// test`, `rspec`, `rails test`, `phpunit`, `mix test`, `dotnet test`, `jest`, `vitest`, `mocha`,
-/// `bun test`, `playwright test`, `flutter test`, `gradle test`, `mvn test`, `xcodebuild test` —
-/// and what each REPORTED, read from the runner's own summary line in its output ("Executed 12
-/// tests, with 0 failures", "Tests: 1 failed, 4 passed, 5 total", "40 passed, 2 failed", "test
-/// result: ok. 7 passed; 0 failed", "12 examples, 0 failures"…).
+/// The test runs a shell line shows (`swift test`, `pytest`, `go test`, `jest`, `rspec`, … one
+/// reader per runner family) and what each REPORTED, read from the runner's own summary line
+/// ("Executed 12 tests, with 0 failures", "Tests: 1 failed, 4 passed, 5 total").
 ///
-/// A run whose summary cannot be read is `.unknown`, said as such, never guessed from the exit
-/// status alone; no run at all is the fact "no tests run". Facts about what was done to check
-/// the work — not a verdict on the work.
+/// An unreadable summary is `.unknown`, never guessed from the exit status; facts about how the
+/// work was checked, not a verdict on it.
 public enum TestRuns {
 
     /// What a run reported: no failures, some, or nothing readable.
@@ -27,10 +23,14 @@ public enum TestRuns {
 
     /// The counts a runner's summary reported.
     public struct Report: Equatable, Sendable {
+        /// Tests reported passing; nil when the summary gave no count.
         public let passed: Int?
+        /// Tests reported failing; nil when the summary gave no count.
         public let failed: Int?
+        /// The run's outcome as the counts decide it.
         public let outcome: Outcome
 
+        /// Creates a report from its parts.
         public init(passed: Int?, failed: Int?, outcome: Outcome) {
             self.passed = passed
             self.failed = failed
@@ -54,12 +54,16 @@ public enum TestRuns {
         public let runner: String
         /// The shell segment that ran it.
         public let command: String
+        /// Tests reported passing; nil when the summary gave no count.
         public let passed: Int?
+        /// Tests reported failing; nil when the summary gave no count.
         public let failed: Int?
+        /// The run's outcome as the counts decide it.
         public let outcome: Outcome
         /// Whatever the caller attached: a transcript's `HH:MM`, or `""`.
         public let timestamp: String
 
+        /// Creates a run from its parts.
         public init(runner: String, command: String, passed: Int?, failed: Int?, outcome: Outcome, timestamp: String) {
             self.runner = runner
             self.command = command

@@ -1,8 +1,8 @@
 # Swift Change Facts
 
 What a change to a codebase DID, as facts a reviewer can hold against a brief — never a judgement;
-and what the shell lines an agent ran did to the data, and which test runs they made. Extracted from [Sidewatch](https://github.com/Sidewatch) on 22 Sep 2026, where each reader shipped
-with a mutation-verified harness; those cases are this package's tests.
+and what the shell lines an agent ran did to the data, and which test runs they made. Extracted from [Sidewatch](https://github.com/Sidewatch), where each reader shipped with a
+mutation-verified harness; those cases are this package's tests.
 
 ```swift
 import ChangeFacts

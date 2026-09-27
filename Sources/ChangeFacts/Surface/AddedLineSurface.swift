@@ -19,13 +19,19 @@ import Foundation
 /// never reported; manifests, lockfiles, prose, tests and vendored trees are never scanned.
 public enum AddedLineSurface {
 
+    /// The environment names and hosts a text uses, each sorted.
     public struct Findings: Equatable, Sendable {
+        /// Environment variable names read, e.g. `STRIPE_KEY`.
         public let envNames: [String]
+        /// Hosts called, lowercased, e.g. `api.stripe.com`.
         public let hosts: [String]
+        /// True when neither a name nor a host was found.
         public var isEmpty: Bool { envNames.isEmpty && hosts.isEmpty }
+        /// Creates findings from already-sorted lists.
         public init(envNames: [String], hosts: [String]) { self.envNames = envNames; self.hosts = hosts }
     }
 
+    /// One regex per language's environment read; capture group 1 is the variable name.
     public static let envPatterns: [String] = [
         #"process\.env\.([A-Z][A-Z0-9_]*)"#, #"process\.env\[['"]([A-Z][A-Z0-9_]*)['"]\]"#,
         #"import\.meta\.env\.([A-Z][A-Z0-9_]*)"#, #"Deno\.env\.get\(['"]([A-Z][A-Z0-9_]*)['"]"#, #"Bun\.env\.([A-Z][A-Z0-9_]*)"#,
@@ -37,7 +43,9 @@ public enum AddedLineSurface {
         #"System\.get_env\(\s*"([A-Z][A-Z0-9_]*)""#, #"\benv\(\s*['"]([A-Z][A-Z0-9_]*)['"]"#, #"\$_ENV\[\s*['"]([A-Z][A-Z0-9_]*)['"]"#,
         #"\$\{\{?\s*([A-Z][A-Z0-9_]*)\s*\}\}?"#,
     ]
+    /// An `http(s)://` URL; capture group 1 is its host.
     public static let hostPattern = #"https?://([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+)"#
+    /// Loopback, example and schema hosts that appear in code without being called.
     public static let ignoredHosts: Set<String> = ["localhost", "example.com", "example.org", "example.net", "www.w3.org", "w3.org", "schema.org", "json-schema.org",
                                             "schemas.microsoft.com", "www.apple.com", "purl.org", "xmlns.com", "www.iana.org", "spec.openapis.org", "json.schemastore.org"]
 

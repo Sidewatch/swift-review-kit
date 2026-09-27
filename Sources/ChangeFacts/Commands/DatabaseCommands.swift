@@ -11,16 +11,12 @@
 
 import Foundation
 
-/// The database commands a shell line shows were RUN — `psql -c "DELETE …"`, `prisma migrate
-/// reset`, `rails db:drop`, `sqlite3 app.db < fix.sql` — as facts with a severity: what the SQL
-/// they carry is (`DestructiveSQL`), or what the subcommand does by its own documentation (a
-/// `migrate reset` drops and recreates the database; a `migrate` does not).
+/// The database commands a shell line shows were RUN (`psql -c "DELETE …"`, `prisma migrate
+/// reset`, `rails db:drop`) as facts with a severity: what the SQL they carry is
+/// (`DestructiveSQL`), or what the subcommand does by its own documentation.
 ///
-/// The line is split into the segments a shell runs (`ShellCommandLine`), each is peeled of its
-/// wrappers, and the tool left at the front is classified. Inline SQL comes from `-c` /
-/// `--command` (psql), `-e` / `--execute` (mysql), the positional argument (sqlite3, duckdb),
-/// `--eval` (mongosh), and a heredoc body. A script the agent ran (`./scripts/reset-db.sh`) is
-/// not seen through; a file it fed (`-f`, `<`) is named, not read.
+/// Inline SQL is read from `-c`, `-e`, `--eval`, a positional argument or a heredoc. A script the
+/// agent ran is not seen through; a file it fed (`-f`, `<`) is named, not read.
 public enum DatabaseCommands {
 
     /// One database command, as it was run and what it did.
@@ -36,6 +32,7 @@ public enum DatabaseCommands {
         /// Whatever the caller attached: a transcript's `HH:MM`, or `""`.
         public let timestamp: String
 
+        /// Creates a command from its parts.
         public init(text: String, tool: String, severity: DestructiveSQL.Severity?, summary: String, timestamp: String) {
             self.text = text
             self.tool = tool

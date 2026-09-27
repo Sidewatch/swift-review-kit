@@ -12,15 +12,9 @@ import Foundation
 
 /// Recognises a dependency manifest or lockfile from its filename.
 ///
-/// An agent editing `Package.swift` is not doing the same thing as an agent editing a source
-/// file: it is pulling in code you have not read, from a registry, on a name it may well have
-/// invented. That is the highest-risk edit an agent can make and the easiest to miss, because
-/// in a list of twenty changed files it looks like row eleven.
-///
-/// This renders a FACT and nothing else: the file's name says it is a manifest. There is no
-/// score, no severity, no opinion about the dependency. Matching is on the name alone — never
-/// on contents — so it costs one string comparison per row and cannot be wrong about a file it
-/// has not read.
+/// Editing a manifest pulls in unread third-party code, the highest-risk edit an agent makes and
+/// the easiest to miss in a list of changed files. This states that FACT only (no score, no
+/// opinion), matching on the name alone so it costs one lookup and never reads the file.
 public enum DependencyManifest {
 
     /// Exact filenames that declare or lock dependencies, mapped to the ecosystem people call

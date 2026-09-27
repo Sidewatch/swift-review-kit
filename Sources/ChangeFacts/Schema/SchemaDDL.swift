@@ -11,22 +11,12 @@
 
 import Foundation
 
-/// Turns a schema written in a framework's own language into CREATE TABLE statements SQLite
-/// can build in memory (the `DatabaseView` diagram's input), so the data model an agent wrote
-/// shows as tables, columns and foreign keys without a database. Types keep the framework's
-/// names where SQLite has none (VARCHAR(120), DECIMAL(10,2), DATETIME, BOOLEAN) — a diagram
-/// and a diff both want the declared type, not what SQLite would coerce it to. Defaults are
-/// carried when they are literals; a function default (`now()`) is dropped, since the model's
-/// shape is the fact here, not the value.
-///
-/// Prisma: models with `@id`, `@unique`, `?` for nullable, `@map`/`@@map`, `@db.X(n)`,
-/// `@relation(fields:references:)` as the foreign key, list relations skipped (virtual),
-/// `@@index` / `@@unique` as indexes, enums as TEXT. Rails: `create_table` blocks with
-/// `t.<type>`, `t.references` (a `_id` column, a foreign key when asked), `t.timestamps`,
-/// `t.index`, `add_foreign_key`, `add_index`. Django: `class X(models.Model)` fields, `db_table`,
-/// abstract models skipped, `ForeignKey` / `OneToOneField` as `<name>_id` with a foreign key,
-/// `ManyToManyField` skipped (its join table is the framework's), `unique_together` as an index.
-/// Drizzle and SQLAlchemy are not read.
+/// Turns a Prisma, Rails `schema.rb` or Django `models.py` schema into CREATE TABLE statements
+/// SQLite can build in memory, so the data model shows as tables, columns and foreign keys
+/// without a database. Types keep the framework's declared names (VARCHAR(120), DECIMAL(10,2))
+/// because a diagram and a diff want the declared type, not SQLite's coercion. Literal defaults
+/// are carried; function defaults (`now()`) are dropped. Relation lists, Django
+/// `ManyToManyField` and abstract models are skipped; Drizzle and SQLAlchemy are not read.
 public enum SchemaDDL {
 
     /// Files this can read, by name: `*.prisma`, `schema.rb`, `models.py`.
@@ -44,10 +34,12 @@ public enum SchemaDDL {
         return nil
     }
 
+    /// `s` as a double-quoted SQL identifier, inner quotes doubled.
     public static func quote(_ s: String) -> String { "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
 
     // MARK: - Prisma
 
+    /// The DDL for a Prisma schema: models, `@relation` foreign keys, `@@index`/`@@unique`, enums as TEXT.
     public static func prisma(_ text: String) -> String {
         let clean = stripComments(text, line: "//")
         var enums = Set<String>()
@@ -157,6 +149,7 @@ public enum SchemaDDL {
 
     // MARK: - Rails schema.rb
 
+    /// The DDL for a Rails `schema.rb`: `create_table` blocks, `add_foreign_key`, `add_index`.
     public static func rails(_ text: String) -> String {
         let clean = stripComments(text, line: "#")
         var out: [String] = []
@@ -210,8 +203,8 @@ public enum SchemaDDL {
             }
             out.append("CREATE TABLE \(quote(table)) (\n  " + (columns + constraints).joined(separator: ",\n  ") + "\n);")
         }
-        // Foreign keys declared after the tables become ALTER-less: re-emit as index-like facts
-        // SQLite can hold — a table constraint needs the CREATE, so we rewrite the CREATE.
+        // Foreign keys declared after the tables: SQLite has no ALTER … ADD CONSTRAINT, so the
+        // constraint is written into the table's CREATE.
         for m in matches(#"add_foreign_key\s+"([^"]+)",\s*"([^"]+)"([^\n]*)"#, clean) {
             let from = group(m, 1, clean), to = group(m, 2, clean), opts = group(m, 3, clean)
             let column = matches(#"column:\s*"([^"]+)""#, opts).first.map { group($0, 1, opts) } ?? singular(to) + "_id"
@@ -256,14 +249,14 @@ public enum SchemaDDL {
 
     // MARK: - Django models.py
 
+    /// The DDL for a Django `models.py`: model fields, `db_table`, foreign keys as `<name>_id`.
     public static func django(_ text: String) -> String {
         let clean = stripComments(text, line: "#") + "\n"   // a final line without a newline is still a body line
         var out: [String] = []
         var laterIndexes: [String] = []
-        // Each class body is the run of indented (or blank) lines under it: one line per
-        // iteration, so a blank line's newline never swallows the next line's indentation.
-        // (An unambiguous line alternation: "indented content" or "empty" — the earlier
-        // `[ \t]+[^\n]*|[ \t]*` let a whitespace line match both ways and backtracked for minutes.)
+        // Each class body is the run of indented (or blank) lines under it, one line per
+        // iteration. The alternation must stay unambiguous ("indented content" or "empty"):
+        // `[ \t]+[^\n]*|[ \t]*` lets a whitespace line match both ways and backtracks for minutes.
         let classes = matches(#"(?m)^class\s+(\w+)\s*\(([^)]*)\)\s*:[ \t]*\n((?:[ \t]+[^\n]*\n|\n)*)"#, clean)
         var tableNames: [String: String] = [:]
         var abstract = Set<String>()
@@ -367,6 +360,7 @@ public enum SchemaDDL {
         return out.joined(separator: "\n")
     }
 
+    /// `text` with everything from the line-comment `marker` on removed, unless a quote opens before it.
     public static func stripComments(_ text: String, line marker: String) -> String {
         text.components(separatedBy: "\n").map { l in
             // A marker inside a string literal is kept: only strip when no quote precedes it.
@@ -377,6 +371,7 @@ public enum SchemaDDL {
         }.joined(separator: "\n")
     }
 
+    /// Every match of `pattern` in `text`; `.` matches newlines, `^`/`$` lines only when asked.
     public static func matches(_ pattern: String, _ text: String, anchorsMatchLines: Bool = false) -> [NSTextCheckingResult] {
         var opts: NSRegularExpression.Options = [.dotMatchesLineSeparators]
         if anchorsMatchLines { opts.insert(.anchorsMatchLines) }
@@ -384,11 +379,13 @@ public enum SchemaDDL {
         return re.matches(in: text, range: NSRange(location: 0, length: (text as NSString).length))
     }
 
+    /// Capture group `i` of `m` as a string; "" when the group did not take part.
     public static func group(_ m: NSTextCheckingResult, _ i: Int, _ text: String) -> String {
         let r = m.range(at: i)
         return r.location == NSNotFound ? "" : (text as NSString).substring(with: r)
     }
 
+    /// The first double-quoted string in `s`, without its quotes.
     public static func firstString(in s: String) -> String? { matches(#""([^"]+)""#, s).first.map { group($0, 1, s) } }
 
     /// `[a, b]` → ["a", "b"], quotes and spaces removed.
@@ -397,6 +394,7 @@ public enum SchemaDDL {
         return group(m, 1, s).components(separatedBy: ",").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"':")) }.filter { !$0.isEmpty }
     }
 
+    /// The items of `name: [a, b]` in `s`, trimmed of spaces only.
     public static func list(named name: String, in s: String) -> [String] {
         guard let m = matches(name + #"\s*:\s*\[([^\]]*)\]"#, s).first else { return [] }
         return group(m, 1, s).components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
@@ -413,12 +411,14 @@ public enum SchemaDDL {
         return nil
     }
 
+    /// A naive English plural (`category` → `categories`), for a Rails reference's target table.
     public static func plural(_ s: String) -> String {
         if s.hasSuffix("y"), !s.hasSuffix("ey"), !s.hasSuffix("ay") { return String(s.dropLast()) + "ies" }
         if s.hasSuffix("s") || s.hasSuffix("x") || s.hasSuffix("ch") || s.hasSuffix("sh") { return s + "es" }
         return s + "s"
     }
 
+    /// The inverse of ``plural(_:)``, for a foreign key's `<singular>_id` column.
     public static func singular(_ s: String) -> String {
         if s.hasSuffix("ies") { return String(s.dropLast(3)) + "y" }
         if s.hasSuffix("ses") || s.hasSuffix("xes") || s.hasSuffix("ches") || s.hasSuffix("shes") { return String(s.dropLast(2)) }

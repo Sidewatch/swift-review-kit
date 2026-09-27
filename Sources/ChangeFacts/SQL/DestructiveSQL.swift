@@ -13,32 +13,15 @@ import Foundation
 
 /// The statements a change ADDS that can lose data, as facts on the lines that add them.
 ///
-/// **What counts.** `DROP TABLE`, `DROP DATABASE` / `SCHEMA`, `ALTER TABLE … DROP COLUMN`,
-/// `TRUNCATE`, and a `DELETE` or `UPDATE` with no `WHERE` (or a `WHERE 1=1`) are
-/// **destructive**. A column type change is a **caution** — data can survive it, or not, and the
-/// text cannot tell. A migration file with no down step is a caution too. The same is
-/// recognised in the DSLs agents write migrations in: Rails (`drop_table`, `remove_column`,
-/// `change_column`), Django and Alembic (`DeleteModel`, `RemoveField`, `op.drop_table`,
-/// `op.drop_column`, `alter_column(type_=)`), Knex, Sequelize and TypeORM (`dropTable`,
-/// `dropColumn`, `removeColumn`, `changeColumn`), Laravel (`Schema::drop`, `dropColumn`,
-/// `->change()`), Ecto (`drop table`, `remove`, `modify`), EF Core (`DropTable`, `DropColumn`,
-/// `AlterColumn`). Raw SQL inside any of them (`execute "…"`, `RunSQL`, `op.execute`,
-/// `queryRunner.query`, `DB::statement`) is read as SQL.
-///
-/// **What does not.** Comments, in the file's own comment syntax. A string literal in a `.sql`
-/// file (an `INSERT` whose value says "DROP TABLE" is data). `DROP INDEX` / `VIEW` /
-/// `CONSTRAINT` / `TRIGGER`, which lose no rows. Prose and data files (Markdown, JSON, YAML,
-/// CSV…), test files and vendored trees. A database DUMP (pg_dump, mysqldump, `.dump`) is
-/// reported ONCE, as what it is, not as its hundreds of `DROP TABLE IF EXISTS`.
-///
-/// **Added lines only**, like `AddedLineSecrets`: a statement already at HEAD is not something
-/// this change did. A statement counts as added when any line of it was added — a `DELETE`
-/// whose `WHERE` sits on an unchanged line below is still one statement, and conditioned.
-///
-/// Facts, not judgements: the mark says what the statement is. Whether it should run is the
-/// reviewer's call.
+/// `DROP TABLE`/`DATABASE`/`SCHEMA`, `DROP COLUMN`, `TRUNCATE` and an unconditioned `DELETE` or
+/// `UPDATE` are destructive; a column type change or a migration with no down step is a caution.
+/// The migration DSLs (Rails, Django, Alembic, Knex, Laravel, Ecto, EF Core) count too, and raw
+/// SQL inside them is read as SQL. Comments, `.sql` string literals, index/view drops, prose,
+/// tests and vendored trees never count; a dump is one finding. A statement counts when any of
+/// its lines was added.
 public enum DestructiveSQL {
 
+    /// Destructive: rows are lost. Caution: data may or may not survive.
     public enum Severity: String, Sendable, Equatable { case destructive, caution }
 
     /// One statement or DSL call, on the line it starts.
@@ -47,6 +30,7 @@ public enum DestructiveSQL {
         public let line: Int
         /// 1-based last line of the statement (its `;`, or the call's closing line).
         public let endLine: Int
+        /// Destructive or caution.
         public let severity: Severity
         /// "DROP TABLE users", "DELETE without WHERE on sessions", "column type changed: users.email".
         public let summary: String
@@ -56,6 +40,7 @@ public enum DestructiveSQL {
     /// Which comment and string rules to read the file with. `nil`: not a file SQL runs from.
     public enum Dialect: Sendable, Equatable { case sql, ruby, python, javascript, php, elixir, csharp, go, java, other }
 
+    /// The dialect `path`'s extension implies; nil for files SQL does not run from (prose, data).
     public static func dialect(forPath path: String) -> Dialect? {
         let ext = (path as NSString).pathExtension.lowercased()
         switch ext {
@@ -360,6 +345,7 @@ public enum DestructiveSQL {
         return nil
     }
 
+    /// Every match of `pattern` in `text`; `.` matches newlines, `^`/`$` lines only when asked.
     public static func matches(of pattern: String, in text: String, anchorsMatchLines: Bool = false) -> [NSTextCheckingResult] {
         var opts: NSRegularExpression.Options = [.dotMatchesLineSeparators]
         if anchorsMatchLines { opts.insert(.anchorsMatchLines) }
@@ -367,18 +353,21 @@ public enum DestructiveSQL {
         return re.matches(in: text, range: NSRange(location: 0, length: (text as NSString).length))
     }
 
+    /// Capture group `group` as an identifier with its `"`, `` ` `` and `[]` quoting removed; "?" when absent.
     public static func ident(_ m: NSTextCheckingResult, _ group: Int, _ text: String) -> String {
         let r = m.range(at: group)
         guard r.location != NSNotFound else { return "?" }
         return (text as NSString).substring(with: r).replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "`", with: "").replacingOccurrences(of: "[", with: "").replacingOccurrences(of: "]", with: "")
     }
 
+    /// The UTF-16 offset each line of `text` starts at, for ``lineNumber(at:starts:)``.
     public static func lineStarts(_ text: String) -> [Int] {
         var starts = [0]
         for (i, u) in text.utf16.enumerated() where u == 10 { starts.append(i + 1) }
         return starts
     }
 
+    /// The 1-based line holding UTF-16 `offset`, by binary search over ``lineStarts(_:)``.
     public static func lineNumber(at offset: Int, starts: [Int]) -> Int {
         var lo = 0, hi = starts.count - 1
         while lo < hi {

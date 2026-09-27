@@ -11,15 +11,10 @@
 
 import Foundation
 
-/// A shell command line read the way a shell runs it.
-///
-/// `segments(of:)` splits on `&&`, `||`, `;`, `|` and newlines outside quotes, keeping a heredoc
-/// with the segment that opened it and joining backslash-continued lines. `words(_:)` splits one
-/// segment into its words with quotes removed. `invocation(of:)` peels `sudo`, `time`, `env`,
-/// environment assignments and the runners agents type (`npx`, `bunx`, `pnpm dlx`, `bundle exec`,
-/// `poetry run`, `uv run`, `docker compose exec svc`, `docker exec -it name`, `kubectl exec pod --`,
-/// `sh -c '…'`, `ssh host '…'`) and names the tool left at the front — the script for an
-/// interpreter (`python manage.py migrate` is `manage.py`), the binary for everything else.
+/// A shell command line read the way a shell runs it: split into segments, then words, then
+/// the tool left at the front once `sudo`, `env`, assignments and runners (`npx`, `bundle exec`,
+/// `docker compose exec svc`, `sh -c '…'`, `ssh host '…'`) are peeled. For an interpreter the
+/// tool is the script (`python manage.py migrate` is `manage.py`).
 public enum ShellCommandLine {
 
     /// One command a segment invokes, once the wrappers around it are peeled.
@@ -31,6 +26,7 @@ public enum ShellCommandLine {
         /// The heredoc body the segment carried, without its opening line, or `nil`.
         public let heredoc: String?
 
+        /// Creates an invocation from its parts.
         public init(tool: String, arguments: [String], heredoc: String?) {
             self.tool = tool
             self.arguments = arguments

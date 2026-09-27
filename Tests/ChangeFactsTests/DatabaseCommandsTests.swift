@@ -83,7 +83,7 @@ final class DatabaseCommandsTests: XCTestCase {
             ("dbmate drop", ["dbmate|D|dbmate drop"]),
             ("goose down", ["goose|C|goose down"]),
             ("goose reset", ["goose|D|goose reset"]),
-            ("migrate -path db -database $URL down -all", ["migrate|D|migrate down -all"]),   // the verb after the flag values (fixed 22 Sep 2026)
+            ("migrate -path db -database $URL down -all", ["migrate|D|migrate down -all"]),   // the verb after the flag values
             ("migrate -path db -database $URL up", ["migrate|-|migrate up"]),
             ("migrate -path db -database $URL drop -f", ["migrate|D|migrate drop"]),
             ("migrate -path db -database $URL version", []),

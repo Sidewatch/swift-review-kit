@@ -15,15 +15,22 @@ import Foundation
 /// (a caution — data may or may not survive), keys and indexes added or removed. Matched by
 /// name; a rename reads as a removal and an addition, which is what the database does too.
 public enum SchemaDiff {
+    /// How much a fact can cost: data lost, data possibly lost, or nothing lost.
     public enum Severity: Sendable, Equatable { case destructive, caution, info }
+    /// What changed, one case per kind of fact.
     public enum Kind: Sendable, Equatable { case tableRemoved, tableAdded, columnRemoved, columnAdded, typeChanged, nullabilityChanged, keyChanged, foreignKeyRemoved, foreignKeyAdded, indexRemoved, indexAdded }
+    /// One change between the schemas.
     public struct Fact: Equatable, Sendable {
+        /// What changed.
         public let kind: Kind
+        /// How much it can cost.
         public let severity: Severity
+        /// The fact as a phrase, e.g. "column users.bio removed".
         public let summary: String
        ; public init(kind: Kind, severity: Severity, summary: String) { self.kind = kind; self.severity = severity; self.summary = summary }
     }
 
+    /// Every fact between two models, tables matched by case-insensitive name.
     public static func compare(old: SchemaModel, new: SchemaModel) -> [Fact] {
         var facts: [Fact] = []
         let oldTables = Dictionary(uniqueKeysWithValues: old.tables.map { ($0.name.lowercased(), $0) })
