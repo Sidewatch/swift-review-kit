@@ -1,11 +1,12 @@
 //
 //  TurnCheckpointStore.swift
-//  SwiftReviewKit
+//  ReviewKit
 //
 //  The per-repo record of which commit opened which agent turn, so a turn's diff can be
 //  exact rather than inferred.
 //
 //  Created by David Sherlock on 7/25/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

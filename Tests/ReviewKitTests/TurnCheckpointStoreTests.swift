@@ -1,11 +1,12 @@
 //
 //  TurnCheckpointStoreTests.swift
-//  Tests for SwiftReviewKit
+//  ReviewKitTests
 //
 //  Tests for `TurnCheckpointStore`: one checkpoint per turn start, the 50-entry bound with
 //  evicted ids returned, persistence per repository, and reset.
 //
 //  Created by David Sherlock on 7/25/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

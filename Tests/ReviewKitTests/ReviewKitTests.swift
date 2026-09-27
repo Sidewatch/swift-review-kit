@@ -1,11 +1,12 @@
 //
 //  ReviewKitTests.swift
-//  Tests for SwiftReviewKit
+//  ReviewKitTests
 //
 //  Tests for `ReviewDraft`: notes accumulate per file, render to the markdown the agent
 //  receives, and clear; the shared draft is reset around every test.
 //
 //  Created by David Sherlock on 7/9/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

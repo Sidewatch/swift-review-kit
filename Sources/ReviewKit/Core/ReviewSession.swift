@@ -1,11 +1,12 @@
 //
 //  ReviewSession.swift
-//  SwiftReviewKit
+//  ReviewKit
 //
 //  Run-scoped review state: which changed files you've marked reviewed, persisted
 //  per-repo in UserDefaults so a review survives relaunch.
 //
 //  Created by David Sherlock on 7/9/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

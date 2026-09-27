@@ -6,6 +6,7 @@
 //  what is wrong, repeat, then send the lot to the agent as ONE message.
 //
 //  Created by David Sherlock on 9/5/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

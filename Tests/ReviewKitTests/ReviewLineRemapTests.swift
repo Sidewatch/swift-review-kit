@@ -1,11 +1,12 @@
 //
 //  ReviewLineRemapTests.swift
-//  SwiftReviewKit
+//  ReviewKitTests
 //
 //  Notes following a text edit: the rule that keeps a review note on the code it was
 //  written about after lines move above it.
 //
 //  Created by David Sherlock on 9/11/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

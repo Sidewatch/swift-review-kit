@@ -1,11 +1,12 @@
 //
 //  ReviewDraft.swift
-//  SwiftReviewKit
+//  ReviewKit
 //
 //  A batch of review notes accumulated across files during one review pass, then
 //  emitted as a single structured markdown block for a terminal agent to act on.
 //
 //  Created by David Sherlock on 7/9/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

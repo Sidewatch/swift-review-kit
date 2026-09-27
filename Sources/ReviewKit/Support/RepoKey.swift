@@ -5,6 +5,7 @@
 //  The dictionary key a repository is filed under in the per-repo stores.
 //
 //  Created by David Sherlock on 9/5/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

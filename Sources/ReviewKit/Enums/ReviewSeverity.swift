@@ -1,10 +1,11 @@
 //
 //  ReviewSeverity.swift
-//  SwiftReviewKit
+//  ReviewKit
 //
 //  How strongly a single review note wants the terminal agent to act on it.
 //
 //  Created by David Sherlock on 7/9/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

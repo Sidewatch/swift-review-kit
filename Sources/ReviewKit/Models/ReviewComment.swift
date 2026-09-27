@@ -1,10 +1,11 @@
 //
 //  ReviewComment.swift
-//  SwiftReviewKit
+//  ReviewKit
 //
 //  A single review note pinned to a file and line, with a severity and message.
 //
 //  Created by David Sherlock on 7/9/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation
