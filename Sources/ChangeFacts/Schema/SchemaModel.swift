@@ -100,16 +100,14 @@ public struct SchemaModel: Equatable, Sendable {
     /// The model of `text` read as `path`; nil when it is not a schema file or defines no table.
     public static func load(text: String, path: String) -> SchemaModel? {
         let ddl: String
-        if let made = SchemaDDL.ddl(for: text, path: path) { ddl = made }
-        else if isSchemaPath(path) { ddl = text }
-        else { return nil }
+        if let made = SchemaDDL.ddl(for: text, path: path) { ddl = made } else if isSchemaPath(path) { ddl = text } else { return nil }
         let model = load(ddl: ddl)
         return model.tables.isEmpty ? nil : model
     }
 
     /// The model the DDL builds, statement by statement.
     public static func load(ddl: String) -> SchemaModel {
-        guard let db = SQLiteDB(sql: ddl) else { return SchemaModel(tables: []) }   // one statement at a time, failures skipped
+        guard let db = SQLiteDB(sql: ddl) else { return SchemaModel(tables: []) }  // one statement at a time, failures skipped
         var tables: [Table] = []
         for name in db.tables() {
             let columns = db.schema(name).map { Column(name: $0.name, type: $0.type, notNull: $0.notNull, pk: $0.pk) }
@@ -119,7 +117,8 @@ public struct SchemaModel: Equatable, Sendable {
                 // seq, name, unique, origin (c = CREATE INDEX, u = UNIQUE constraint, pk)
                 guard row[3] == "c" || row[3] == "u" else { continue }
                 let cols = db.run("PRAGMA index_info(\(SQLiteDB.quoteIdentifier(row[1])))").rows.compactMap { $0.count >= 3 ? $0[2] : nil }
-                guard !cols.isEmpty, !cols.contains("NULL"), !cols.contains("") else { continue }   // an index on an expression, not a column
+                // an index on an expression, not a column
+                guard !cols.isEmpty, !cols.contains("NULL"), !cols.contains("") else { continue }
                 let indexName = row[3] == "u" ? "unique(\(cols.joined(separator: ", ")))" : row[1]
                 indexes.append(Index(name: indexName, columns: cols, unique: row[2] == "1"))
             }
@@ -131,4 +130,3 @@ public struct SchemaModel: Equatable, Sendable {
     /// The script's statements, as the reader splits them (quotes, comments, trigger bodies).
     public static func statements(in ddl: String) -> [String] { SQLiteDB.statements(in: ddl) }
 }
-

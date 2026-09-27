@@ -23,14 +23,17 @@ final class DatabaseCommandsTests: XCTestCase {
 
     func testPsqlInlineSQLIsClassifiedAFileIsNamedAndABareSessionIsInformational() {
         XCTAssertEqual(cmds("psql \"$DATABASE_URL\" -c \"DELETE FROM sessions\""), ["psql|D|DELETE without WHERE on sessions"])
-        XCTAssertEqual(cmds("psql -c 'DELETE FROM sessions WHERE expires_at < now()'"), ["psql|-|DELETE FROM sessions WHERE expires_at < now()"])
+        XCTAssertEqual(
+            cmds("psql -c 'DELETE FROM sessions WHERE expires_at < now()'"), ["psql|-|DELETE FROM sessions WHERE expires_at < now()"])
         XCTAssertEqual(cmds("psql app -f schema.sql"), ["psql|C|runs schema.sql"])
         XCTAssertEqual(cmds("psql app_dev"), ["psql|-|opens a psql session"])
         XCTAssertEqual(cmds("psql --command=\"TRUNCATE t\""), ["psql|D|TRUNCATE t"], "--option=value")
     }
 
     func testWrappersArePeeledBeforeTheToolIsRead() {
-        XCTAssertEqual(cmds("cd app && DATABASE_URL=postgres://x npx prisma migrate reset --force"), ["prisma|D|prisma migrate reset — drops and recreates the database"])
+        XCTAssertEqual(
+            cmds("cd app && DATABASE_URL=postgres://x npx prisma migrate reset --force"),
+            ["prisma|D|prisma migrate reset — drops and recreates the database"])
         XCTAssertEqual(cmds("sudo -u postgres psql -c 'TRUNCATE t'"), ["psql|D|TRUNCATE t"])
         XCTAssertEqual(cmds("bundle exec rails db:drop"), ["rails|D|rails db:drop"])
         XCTAssertEqual(cmds("docker compose exec -T db psql -U app app_dev -c 'DROP TABLE t'"), ["psql|D|DROP TABLE t"])
@@ -40,8 +43,9 @@ final class DatabaseCommandsTests: XCTestCase {
     }
 
     func testAHeredocBodyIsTheSQLTheWorstStatementLeadsAndTheRestAreCounted() {
-        XCTAssertEqual(cmds("psql app <<'SQL'\nUPDATE users SET plan = 'free';\nSELECT count(*) FROM users;\nDROP TABLE t;\nSQL"),
-                       ["psql|D|UPDATE without WHERE on users (+1 more)"])
+        XCTAssertEqual(
+            cmds("psql app <<'SQL'\nUPDATE users SET plan = 'free';\nSELECT count(*) FROM users;\nDROP TABLE t;\nSQL"),
+            ["psql|D|UPDATE without WHERE on users (+1 more)"])
         let command = DatabaseCommands.detect("psql app <<'SQL'\nDROP TABLE t;\nSQL", timestamp: "10:42").first
         XCTAssertEqual(command?.timestamp, "10:42")
         XCTAssertEqual(command?.text, "psql app <<'SQL'\nDROP TABLE t;\nSQL", "the segment as it was run, body included")
@@ -82,7 +86,7 @@ final class DatabaseCommandsTests: XCTestCase {
             ("dbmate drop", ["dbmate|D|dbmate drop"]),
             ("goose down", ["goose|C|goose down"]),
             ("goose reset", ["goose|D|goose reset"]),
-            ("migrate -path db -database $URL down -all", ["migrate|D|migrate down -all"]),   // the verb after the flag values
+            ("migrate -path db -database $URL down -all", ["migrate|D|migrate down -all"]),  // the verb after the flag values
             ("migrate -path db -database $URL up", ["migrate|-|migrate up"]),
             ("migrate -path db -database $URL drop -f", ["migrate|D|migrate drop"]),
             ("migrate -path db -database $URL version", []),
@@ -97,7 +101,8 @@ final class DatabaseCommandsTests: XCTestCase {
     func testTheOtherClientsInlineSQLAndTheirOwnDestructiveVerbs() {
         XCTAssertEqual(cmds("mysql -u root app -e 'TRUNCATE t'"), ["mysql|D|TRUNCATE t"])
         XCTAssertEqual(cmds("mysql app < dump.sql"), ["mysql|C|runs dump.sql"], "a file fed on stdin is named")
-        XCTAssertEqual(cmds("sqlite3 app.db \"DELETE FROM carts WHERE user_id IS NULL\""), ["sqlite3|-|DELETE FROM carts WHERE user_id IS NULL"])
+        XCTAssertEqual(
+            cmds("sqlite3 app.db \"DELETE FROM carts WHERE user_id IS NULL\""), ["sqlite3|-|DELETE FROM carts WHERE user_id IS NULL"])
         XCTAssertEqual(cmds("sqlite3 app.db 'DELETE FROM carts'"), ["sqlite3|D|DELETE without WHERE on carts"])
         XCTAssertEqual(cmds("sqlite3 app.db"), ["sqlite3|-|opens app.db"])
         XCTAssertEqual(cmds("mongosh app --eval 'db.dropDatabase()'"), ["mongosh|D|dropDatabase()"])

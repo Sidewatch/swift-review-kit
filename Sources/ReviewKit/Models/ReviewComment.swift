@@ -53,8 +53,9 @@ public struct ReviewComment {
         let newLine = moved(line)
         let newEnd = endLine.map { max(moved($0), newLine) }
         guard newLine != line || newEnd != endLine else { return self }
-        return ReviewComment(file: file, line: newLine, endLine: newEnd, hunk: hunk,
-                             severity: severity, note: note)
+        return ReviewComment(
+            file: file, line: newLine, endLine: newEnd, hunk: hunk,
+            severity: severity, note: note)
     }
 
     /// Creates a single-line review comment carrying no source.
@@ -70,8 +71,10 @@ public struct ReviewComment {
 
     /// Creates a review comment, optionally spanning `line...endLine` and quoting its source
     /// as `hunk`.
-    public init(file: String, line: Int, endLine: Int?, hunk: String?,
-                severity: ReviewSeverity, note: String) {
+    public init(
+        file: String, line: Int, endLine: Int?, hunk: String?,
+        severity: ReviewSeverity, note: String
+    ) {
         self.file = file
         self.line = line
         self.endLine = endLine

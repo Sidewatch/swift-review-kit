@@ -65,10 +65,14 @@ public enum DiffLineLocator {
                 if raw.hasPrefix("\\") || raw.hasPrefix("Binary files") { return nil }
                 return Located(line: new, side: " ", text: raw.hasPrefix(" ") ? String(raw.dropFirst()) : raw)
             }
-            if raw.hasPrefix("+") { new += 1 }
-            else if raw.hasPrefix("-") { old += 1 }
-            else if raw.hasPrefix("\\") { }
-            else if i > 0 { old += 1; new += 1 }   // context (only meaningful inside a hunk)
+            if raw.hasPrefix("+") {
+                new += 1
+            } else if raw.hasPrefix("-") {
+                old += 1
+            } else if raw.hasPrefix("\\") {
+            } else if i > 0 {
+                old += 1; new += 1
+            }  // context (only meaningful inside a hunk)
         }
         return nil
     }

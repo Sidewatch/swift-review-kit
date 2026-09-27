@@ -46,8 +46,10 @@ public enum AddedLineSurface {
     /// An `http(s)://` URL; capture group 1 is its host.
     public static let hostPattern = #"https?://([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+)"#
     /// Loopback, example and schema hosts that appear in code without being called.
-    public static let ignoredHosts: Set<String> = ["localhost", "example.com", "example.org", "example.net", "www.w3.org", "w3.org", "schema.org", "json-schema.org",
-                                            "schemas.microsoft.com", "www.apple.com", "purl.org", "xmlns.com", "www.iana.org", "spec.openapis.org", "json.schemastore.org"]
+    public static let ignoredHosts: Set<String> = [
+        "localhost", "example.com", "example.org", "example.net", "www.w3.org", "w3.org", "schema.org", "json-schema.org",
+        "schemas.microsoft.com", "www.apple.com", "purl.org", "xmlns.com", "www.iana.org", "spec.openapis.org", "json.schemastore.org",
+    ]
 
     /// Every environment name and host `text` uses (comments blanked in `path`'s syntax).
     public static func scan(_ text: String, path: String) -> Findings {
@@ -57,8 +59,14 @@ public enum AddedLineSurface {
         for p in envPatterns { for m in RegexMatches.all(p, in: clean) { names.insert(m[1]) } }
         for m in RegexMatches.all(hostPattern, in: clean) {
             let host = m[1].lowercased()
-            guard !ignoredHosts.contains(host), !host.hasSuffix(".local"), !host.hasSuffix(".localhost"), host != "127.0.0.1", host != "0.0.0.0" else { continue }
-            if host.range(of: #"^\d+\.\d+\.\d+\.\d+$"#, options: .regularExpression) != nil, host.hasPrefix("127.") || host.hasPrefix("10.") || host.hasPrefix("192.168.") { continue }
+            guard !ignoredHosts.contains(host), !host.hasSuffix(".local"), !host.hasSuffix(".localhost"), host != "127.0.0.1",
+                host != "0.0.0.0"
+            else { continue }
+            if host.range(of: #"^\d+\.\d+\.\d+\.\d+$"#, options: .regularExpression) != nil,
+                host.hasPrefix("127.") || host.hasPrefix("10.") || host.hasPrefix("192.168.")
+            {
+                continue
+            }
             hosts.insert(host)
         }
         return Findings(envNames: names.sorted(), hosts: hosts.sorted())
@@ -70,11 +78,15 @@ public enum AddedLineSurface {
         guard isScannable(path) else { return Findings(envNames: [], hosts: []) }
         let addedText: String
         if let addedLines {
-            addedText = newText.components(separatedBy: "\n").enumerated().filter { addedLines.contains($0.offset + 1) }.map(\.element).joined(separator: "\n")
-        } else { addedText = newText }
+            addedText = newText.components(separatedBy: "\n").enumerated().filter { addedLines.contains($0.offset + 1) }.map(\.element)
+                .joined(separator: "\n")
+        } else {
+            addedText = newText
+        }
         let fresh = scan(addedText, path: path)
         let before = oldText.map { scan($0, path: path) } ?? Findings(envNames: [], hosts: [])
-        return Findings(envNames: fresh.envNames.filter { !before.envNames.contains($0) }, hosts: fresh.hosts.filter { !before.hosts.contains($0) })
+        return Findings(
+            envNames: fresh.envNames.filter { !before.envNames.contains($0) }, hosts: fresh.hosts.filter { !before.hosts.contains($0) })
     }
 
     /// Code files only: not manifests, lockfiles, prose, tests or vendored trees.
@@ -88,21 +100,33 @@ public enum AddedLineSurface {
         func shown(_ items: [String]) -> String {
             let list = items.prefix(8).joined(separator: ", ")
             guard items.count > 8 else { return list }
-            return String(localized: "\(list) and \(items.count - 8) more", bundle: .module,
-                          comment: "A shortened list: the first argument is a comma-separated list, the second how many more were left out")
+            return String(
+                localized: "\(list) and \(items.count - 8) more", bundle: .module,
+                comment: "A shortened list: the first argument is a comma-separated list, the second how many more were left out")
         }
         var parts: [String] = []
         if !f.envNames.isEmpty {
             let names = shown(f.envNames)
-            parts.append(f.envNames.count == 1
-                ? String(localized: "Reads new environment variable: \(names)", bundle: .module, comment: "Tool-tip on a changed code file; the argument is one environment variable name")
-                : String(localized: "Reads new environment variables: \(names)", bundle: .module, comment: "Tool-tip on a changed code file; the argument is a comma-separated list of environment variable names"))
+            parts.append(
+                f.envNames.count == 1
+                    ? String(
+                        localized: "Reads new environment variable: \(names)", bundle: .module,
+                        comment: "Tool-tip on a changed code file; the argument is one environment variable name")
+                    : String(
+                        localized: "Reads new environment variables: \(names)", bundle: .module,
+                        comment: "Tool-tip on a changed code file; the argument is a comma-separated list of environment variable names"))
         }
         if !f.hosts.isEmpty {
             let hosts = shown(f.hosts)
-            parts.append(f.hosts.count == 1
-                ? String(localized: "Calls new host: \(hosts)", bundle: .module, comment: "Tool-tip on a changed code file; the argument is one host name the code now calls")
-                : String(localized: "Calls new hosts: \(hosts)", bundle: .module, comment: "Tool-tip on a changed code file; the argument is a comma-separated list of host names the code now calls"))
+            parts.append(
+                f.hosts.count == 1
+                    ? String(
+                        localized: "Calls new host: \(hosts)", bundle: .module,
+                        comment: "Tool-tip on a changed code file; the argument is one host name the code now calls")
+                    : String(
+                        localized: "Calls new hosts: \(hosts)", bundle: .module,
+                        comment: "Tool-tip on a changed code file; the argument is a comma-separated list of host names the code now calls")
+            )
         }
         return parts.joined(separator: " · ")
     }

@@ -19,13 +19,20 @@ final class TestRunsTests: XCTestCase {
 
     func testRunnersByTheirOwnNamesAndWhatIsNotARun() {
         let cases: [(String, String?)] = [
-            ("swift test 2>&1 | tail -20", "swift test"), ("cd web && npm test", nil), ("npm test", "npm test"), ("npm run test:unit", "npm test"),
-            ("npx jest --ci", "jest"), ("npx vitest run", "vitest"), ("pytest -q", "pytest"), ("python -m pytest tests/", "pytest"), ("python3 -m unittest", "unittest"),
-            ("go test ./...", "go test"), ("cargo test --workspace", "cargo test"), ("cargo nextest run", "cargo test"), ("bundle exec rspec spec/", "rspec"), ("bin/rails test", "rails test"),
-            ("vendor/bin/phpunit", "phpunit"), ("php artisan test", "artisan test"), ("mix test", "mix test"), ("dotnet test", "dotnet test"),
-            ("./gradlew test", "gradle test"), ("mvn -q test", "mvn test"), ("flutter test", "flutter test"), ("deno test -A", "deno test"), ("make test", "make test"),
-            ("xcodebuild test -scheme App", "xcodebuild test"), ("bun test", "bun test"), ("npx playwright test", "playwright test"), ("ctest --output-on-failure", "ctest"),
-            ("grep -n test README.md", nil), ("npm run build", nil), ("swift build", nil), ("cargo build", nil), ("go vet ./...", nil), ("", nil),
+            ("swift test 2>&1 | tail -20", "swift test"), ("cd web && npm test", nil), ("npm test", "npm test"),
+            ("npm run test:unit", "npm test"),
+            ("npx jest --ci", "jest"), ("npx vitest run", "vitest"), ("pytest -q", "pytest"), ("python -m pytest tests/", "pytest"),
+            ("python3 -m unittest", "unittest"),
+            ("go test ./...", "go test"), ("cargo test --workspace", "cargo test"), ("cargo nextest run", "cargo test"),
+            ("bundle exec rspec spec/", "rspec"), ("bin/rails test", "rails test"),
+            ("vendor/bin/phpunit", "phpunit"), ("php artisan test", "artisan test"), ("mix test", "mix test"),
+            ("dotnet test", "dotnet test"),
+            ("./gradlew test", "gradle test"), ("mvn -q test", "mvn test"), ("flutter test", "flutter test"), ("deno test -A", "deno test"),
+            ("make test", "make test"),
+            ("xcodebuild test -scheme App", "xcodebuild test"), ("bun test", "bun test"), ("npx playwright test", "playwright test"),
+            ("ctest --output-on-failure", "ctest"),
+            ("grep -n test README.md", nil), ("npm run build", nil), ("swift build", nil), ("cargo build", nil), ("go vet ./...", nil),
+            ("", nil),
         ]
         for (line, runner) in cases {
             XCTAssertEqual(TestRuns.runner(of: line), runner, line)
@@ -39,8 +46,15 @@ final class TestRunsTests: XCTestCase {
 
     func testEachRunnersSummaryLineReadsOutAsCounts() {
         let cases: [(String, String, String)] = [
-            ("swift test", "Test Suite 'All tests' passed\n\t Executed 12 tests, with 0 failures (0 unexpected) in 0.4 seconds", "12/0/passed"),
-            ("swift test", "Executed 3 tests, with 1 failure (0 unexpected) in 0.4 seconds\nExecuted 12 tests, with 2 failures (0 unexpected) in 0.9 seconds", "10/2/failed"),
+            (
+                "swift test", "Test Suite 'All tests' passed\n\t Executed 12 tests, with 0 failures (0 unexpected) in 0.4 seconds",
+                "12/0/passed"
+            ),
+            (
+                "swift test",
+                "Executed 3 tests, with 1 failure (0 unexpected) in 0.4 seconds\nExecuted 12 tests, with 2 failures (0 unexpected) in 0.9 seconds",
+                "10/2/failed"
+            ),
             ("swift test", "✔ Test run with 7 tests in 2 suites passed after 0.1 seconds.", "7/0/passed"),
             ("swift test", "✘ Test run with 7 tests in 2 suites failed after 0.1 seconds with 2 issues.", "5/2/failed"),
             ("xcodebuild test", "** TEST SUCCEEDED **", "-/-/passed"),
@@ -90,7 +104,9 @@ final class TestRunsTests: XCTestCase {
     }
 
     func testRunsReadEverySegmentOfALineAgainstItsOneOutput() {
-        let runs = TestRuns.runs(in: "swift build && swift test 2>&1 | tail -20", output: "Executed 3 tests, with 0 failures (0 unexpected)", isError: false, timestamp: "11:00")
+        let runs = TestRuns.runs(
+            in: "swift build && swift test 2>&1 | tail -20", output: "Executed 3 tests, with 0 failures (0 unexpected)", isError: false,
+            timestamp: "11:00")
         XCTAssertEqual(runs.map(\.summary), ["swift test: 3 passed, 0 failed"])
         XCTAssertEqual(runs.first?.command, "swift test 2>&1")
         XCTAssertEqual(runs.first?.timestamp, "11:00")
@@ -110,7 +126,10 @@ final class TestRunsTests: XCTestCase {
     }
 
     func testTestFilesByPathAndNameAndTheTallyOfChangedFiles() {
-        for path in ["Tests/AppTests/FooTests.swift", "src/__tests__/a.js", "spec/models/user_spec.rb", "pkg/x_test.go", "tests/test_api.py", "app/Foo.test.tsx", "UserTest.java", "Testing/Fixture.cs"] {
+        for path in [
+            "Tests/AppTests/FooTests.swift", "src/__tests__/a.js", "spec/models/user_spec.rb", "pkg/x_test.go", "tests/test_api.py",
+            "app/Foo.test.tsx", "UserTest.java", "Testing/Fixture.cs",
+        ] {
             XCTAssertTrue(TestRuns.isTestPath(path), path)
         }
         for path in ["Sources/App/Foo.swift", "src/contest.js", "docs/manual.md", "attest.go", "src/latest.ts"] {

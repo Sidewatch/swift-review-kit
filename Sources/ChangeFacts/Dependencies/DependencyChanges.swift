@@ -37,24 +37,31 @@ public enum DependencyChanges {
             switch kind {
             case .added:
                 if let version, !version.isEmpty {
-                    return String(localized: "adds \(name) \(version)", bundle: .module,
-                                  comment: "Dependency change: the first argument is the package name, the second its version")
+                    return String(
+                        localized: "adds \(name) \(version)", bundle: .module,
+                        comment: "Dependency change: the first argument is the package name, the second its version")
                 }
                 return String(localized: "adds \(name)", bundle: .module, comment: "Dependency change: the argument is the package name")
-            case .removed: return String(localized: "removes \(name)", bundle: .module, comment: "Dependency change: the argument is the package name")
+            case .removed:
+                return String(localized: "removes \(name)", bundle: .module, comment: "Dependency change: the argument is the package name")
             case .changed:
-                return String(localized: "bumps \(name) \(oldVersion ?? "?") → \(version ?? "?")", bundle: .module,
-                              comment: "Dependency change: package name, then its old version → new version")
+                return String(
+                    localized: "bumps \(name) \(oldVersion ?? "?") → \(version ?? "?")", bundle: .module,
+                    comment: "Dependency change: package name, then its old version → new version")
             }
         }
         /// Creates a fact from its parts.
-        public init(kind: Kind, name: String, version: String?, oldVersion: String?) { self.kind = kind; self.name = name; self.version = version; self.oldVersion = oldVersion }
+        public init(kind: Kind, name: String, version: String?, oldVersion: String?) {
+            self.kind = kind; self.name = name; self.version = version; self.oldVersion = oldVersion
+        }
     }
 
     /// Lockfile names, whose changes follow their manifest and are never read as facts.
-    public static let lockfiles: Set<String> = ["Package.resolved", "Podfile.lock", "Cartfile.resolved", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb",
-                                         "Cargo.lock", "go.sum", "Gemfile.lock", "poetry.lock", "Pipfile.lock", "uv.lock", "composer.lock", "gradle.lockfile",
-                                         "pubspec.lock", "mix.lock", "Gopkg.lock", "deno.lock"]
+    public static let lockfiles: Set<String> = [
+        "Package.resolved", "Podfile.lock", "Cartfile.resolved", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb",
+        "Cargo.lock", "go.sum", "Gemfile.lock", "poetry.lock", "Pipfile.lock", "uv.lock", "composer.lock", "gradle.lockfile",
+        "pubspec.lock", "mix.lock", "Gopkg.lock", "deno.lock",
+    ]
     /// Whether `path`'s last component is one of ``lockfiles``.
     public static func isLockfile(_ path: String) -> Bool { lockfiles.contains((path as NSString).lastPathComponent) }
 
@@ -117,24 +124,38 @@ public enum DependencyChanges {
             }
             var names = shown.joined(separator: ", ")
             if items.count > 6 {
-                names = String(localized: "\(names) and \(items.count - 6) more", bundle: .module,
-                               comment: "Dependency list: the first argument is a comma-separated list of packages, the second how many more were left out")
+                names = String(
+                    localized: "\(names) and \(items.count - 6) more", bundle: .module,
+                    comment:
+                        "Dependency list: the first argument is a comma-separated list of packages, the second how many more were left out")
             }
             switch kind {
-            case .added: return String(localized: "adds \(names)", bundle: .module, comment: "Dependency summary clause: the argument is a list of added packages")
-            case .removed: return String(localized: "removes \(names)", bundle: .module, comment: "Dependency summary clause: the argument is a list of removed packages")
-            case .changed: return String(localized: "bumps \(names)", bundle: .module, comment: "Dependency summary clause: the argument is a list of packages with old → new versions")
+            case .added:
+                return String(
+                    localized: "adds \(names)", bundle: .module,
+                    comment: "Dependency summary clause: the argument is a list of added packages")
+            case .removed:
+                return String(
+                    localized: "removes \(names)", bundle: .module,
+                    comment: "Dependency summary clause: the argument is a list of removed packages")
+            case .changed:
+                return String(
+                    localized: "bumps \(names)", bundle: .module,
+                    comment: "Dependency summary clause: the argument is a list of packages with old → new versions")
             }
         }
         let clauses = [list(.added), list(.removed), list(.changed)].compactMap { $0 }.joined(separator: "; ")
-        return String(localized: "Dependencies: \(clauses)", bundle: .module,
-                      comment: "Tool-tip on a changed dependency manifest; the argument is the semicolon-separated adds/removes/bumps clauses")
+        return String(
+            localized: "Dependencies: \(clauses)", bundle: .module,
+            comment: "Tool-tip on a changed dependency manifest; the argument is the semicolon-separated adds/removes/bumps clauses")
     }
 
     // MARK: - Parsers
 
     private static func json(_ text: String, keys: [String]) -> [String: String]? {
-        guard let data = text.data(using: .utf8), let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
+        guard let data = text.data(using: .utf8), let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            return nil
+        }
         var out: [String: String] = [:]
         for key in keys {
             guard let table = obj[key] as? [String: Any] else { continue }
@@ -146,7 +167,8 @@ public enum DependencyChanges {
     private static func requirements(_ text: String) -> [String: String] {
         var out: [String: String] = [:]
         for raw in text.components(separatedBy: "\n") {
-            let line = (raw.range(of: "#").map { String(raw[..<$0.lowerBound]) } ?? raw).trimmingCharacters(in: .whitespaces)   // a line that IS a comment is empty, not its remainder
+            // a line that IS a comment is empty, not its remainder
+            let line = (raw.range(of: "#").map { String(raw[..<$0.lowerBound]) } ?? raw).trimmingCharacters(in: .whitespaces)
             guard !line.isEmpty, !line.hasPrefix("-") else { continue }
             guard let m = match(#"^([A-Za-z0-9][A-Za-z0-9._-]*)(?:\[[^\]]*\])?\s*([<>=!~]=?[^;]*)?"#, line) else { continue }
             out[m[1]] = m[2].trimmingCharacters(in: .whitespaces)
@@ -160,20 +182,28 @@ public enum DependencyChanges {
         var active = false
         var subTable: String? = nil
         for raw in text.components(separatedBy: "\n") {
-            let line = (raw.range(of: "#").map { String(raw[..<$0.lowerBound]) } ?? raw).trimmingCharacters(in: .whitespaces)   // a line that IS a comment is empty, not its remainder
+            // a line that IS a comment is empty, not its remainder
+            let line = (raw.range(of: "#").map { String(raw[..<$0.lowerBound]) } ?? raw).trimmingCharacters(in: .whitespaces)
             if line.hasPrefix("[") {
                 let header = line.trimmingCharacters(in: CharacterSet(charactersIn: "[]")).trimmingCharacters(in: .whitespaces)
                 subTable = nil
                 if let hit = sections.first(where: { header == $0 || (prefixMatch && header.hasPrefix($0 + ".")) }) {
                     active = true
-                    if header != hit, header.hasPrefix(hit + ".") { subTable = String(header.dropFirst(hit.count + 1)).trimmingCharacters(in: CharacterSet(charactersIn: "\"")) }
-                } else { active = false }
+                    if header != hit, header.hasPrefix(hit + ".") {
+                        subTable = String(header.dropFirst(hit.count + 1)).trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+                    }
+                } else {
+                    active = false
+                }
                 continue
             }
             guard active, let m = match(#"^([A-Za-z0-9_.-]+)\s*=\s*(.+)$"#, line) else { continue }
             if let sub = subTable {
-                if m[1] == "version" { out[sub] = m[2].trimmingCharacters(in: CharacterSet(charactersIn: "\" ")) }
-                else if out[sub] == nil { out[sub] = "" }
+                if m[1] == "version" {
+                    out[sub] = m[2].trimmingCharacters(in: CharacterSet(charactersIn: "\" "))
+                } else if out[sub] == nil {
+                    out[sub] = ""
+                }
                 continue
             }
             out[m[1]] = tomlSpec(m[2])
@@ -209,7 +239,8 @@ public enum DependencyChanges {
             let args = m[1]
             if let url = match(#"url:\s*"([^"]+)""#, args) {
                 let name = ((url[1] as NSString).lastPathComponent as NSString).deletingPathExtension
-                let version = match(#"(?:from|exact|branch|revision):\s*"([^"]+)""#, args)?[1]
+                let version =
+                    match(#"(?:from|exact|branch|revision):\s*"([^"]+)""#, args)?[1]
                     ?? match(#""([^"]+)"\s*\.\.[<.]\s*"([^"]+)""#, args).map { "\($0[1])..<\($0[2])" }
                     ?? match(#"\.upToNext(?:Major|Minor)\(from:\s*"([^"]+)""#, args)?[1] ?? ""
                 out[name] = version
@@ -272,7 +303,10 @@ public enum DependencyChanges {
 
     private static func gradle(_ text: String) -> [String: String] {
         var out: [String: String] = [:]
-        for m in matches(#"(?m)^\s*(?:implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly|kapt|ksp|annotationProcessor|classpath)\s*\(?\s*['"]([^'":]+):([^'":]+)(?::([^'"]+))?['"]"#, text) {
+        for m in matches(
+            #"(?m)^\s*(?:implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly|kapt|ksp|annotationProcessor|classpath)\s*\(?\s*['"]([^'":]+):([^'":]+)(?::([^'"]+))?['"]"#,
+            text)
+        {
             out["\(m[1]):\(m[2])"] = m[3]
         }
         return out
@@ -281,7 +315,9 @@ public enum DependencyChanges {
     private static func pom(_ text: String) -> [String: String] {
         var out: [String: String] = [:]
         for m in matches(#"(?s)<dependency>(.*?)</dependency>"#, text) {
-            guard let g = match(#"<groupId>\s*([^<]+?)\s*</groupId>"#, m[1]), let a = match(#"<artifactId>\s*([^<]+?)\s*</artifactId>"#, m[1]) else { continue }
+            guard let g = match(#"<groupId>\s*([^<]+?)\s*</groupId>"#, m[1]),
+                let a = match(#"<artifactId>\s*([^<]+?)\s*</artifactId>"#, m[1])
+            else { continue }
             out["\(g[1]):\(a[1])"] = match(#"<version>\s*([^<]+?)\s*</version>"#, m[1])?[1] ?? ""
         }
         return out

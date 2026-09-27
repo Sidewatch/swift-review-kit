@@ -59,8 +59,8 @@ final class ReviewKitTests: XCTestCase {
         ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 1, severity: .mustFix, note: "one"))
         var fired = 0
         ReviewDraft.shared.onChange = { fired += 1 }
-        ReviewDraft.shared.remove(at: 5)     // out of range
-        ReviewDraft.shared.remove(at: -1)    // out of range
+        ReviewDraft.shared.remove(at: 5)  // out of range
+        ReviewDraft.shared.remove(at: -1)  // out of range
         XCTAssertEqual(ReviewDraft.shared.comments.count, 1)
         XCTAssertEqual(fired, 0)
     }
@@ -84,51 +84,55 @@ final class ReviewKitTests: XCTestCase {
         ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 2, severity: .question, note: "why?"))
 
         let expected = """
-        ## Code review
+            ## Code review
 
-        ### a.swift
-        - **[question]** L2: why?
-        - **[suggestion]** L5: nit
+            ### a.swift
+            - **[question]** L2: why?
+            - **[suggestion]** L5: nit
 
-        ### b.swift
-        - **[must-fix]** L10: fix this
-        """
+            ### b.swift
+            - **[must-fix]** L10: fix this
+            """
         XCTAssertEqual(ReviewDraft.shared.markdown(), expected)
     }
 
     func testMarkdownIndentsMultiLineNotesSoTheyStayInsideTheirListItem() {
         // A note with interior newlines must not escape its bullet — a continuation
         // line starting with "### " would otherwise read as a new file heading.
-        ReviewDraft.shared.add(ReviewComment(file: "b.swift", line: 5, severity: .mustFix,
-                                             note: "fix the loop\n### a.swift\nalso rename x"))
+        ReviewDraft.shared.add(
+            ReviewComment(
+                file: "b.swift", line: 5, severity: .mustFix,
+                note: "fix the loop\n### a.swift\nalso rename x"))
         let expected = """
-        ## Code review
+            ## Code review
 
-        ### b.swift
-        - **[must-fix]** L5: fix the loop
-          ### a.swift
-          also rename x
-        """
+            ### b.swift
+            - **[must-fix]** L5: fix the loop
+              ### a.swift
+              also rename x
+            """
         XCTAssertEqual(ReviewDraft.shared.markdown(), expected)
         XCTAssertFalse(ReviewDraft.shared.markdown().contains("\n### a.swift"))
     }
 
     func testMarkdownQuotesTheHunkAsAFencedBlockInsideTheListItem() {
-        ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 12, endLine: 14,
-                                             hunk: "func go() {\n    return 1\n}",
-                                             severity: .mustFix, note: "returns the wrong thing"))
+        ReviewDraft.shared.add(
+            ReviewComment(
+                file: "a.swift", line: 12, endLine: 14,
+                hunk: "func go() {\n    return 1\n}",
+                severity: .mustFix, note: "returns the wrong thing"))
         let expected = """
-        ## Code review
+            ## Code review
 
-        ### a.swift
-        - **[must-fix]** L12-L14: returns the wrong thing
+            ### a.swift
+            - **[must-fix]** L12-L14: returns the wrong thing
 
-          ```
-          func go() {
-              return 1
-          }
-          ```
-        """
+              ```
+              func go() {
+                  return 1
+              }
+              ```
+            """
         XCTAssertEqual(ReviewDraft.shared.markdown(), expected)
     }
 
@@ -137,18 +141,20 @@ final class ReviewKitTests: XCTestCase {
         // no range suffix, no fence, no extra blank line.
         ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 5, severity: .suggestion, note: "nit"))
         let expected = """
-        ## Code review
+            ## Code review
 
-        ### a.swift
-        - **[suggestion]** L5: nit
-        """
+            ### a.swift
+            - **[suggestion]** L5: nit
+            """
         XCTAssertEqual(ReviewDraft.shared.markdown(), expected)
     }
 
     func testMarkdownOmitsTheRangeWhenTheNoteIsASingleLine() {
         // endLine equal to line is a single-line note, not a degenerate range.
-        ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 7, endLine: 7, hunk: "let x = 1",
-                                             severity: .question, note: "why?"))
+        ReviewDraft.shared.add(
+            ReviewComment(
+                file: "a.swift", line: 7, endLine: 7, hunk: "let x = 1",
+                severity: .question, note: "why?"))
         let md = ReviewDraft.shared.markdown()
         XCTAssertTrue(md.contains("- **[question]** L7: why?"))
         XCTAssertFalse(md.contains("L7-L7"))
@@ -157,14 +163,18 @@ final class ReviewKitTests: XCTestCase {
 
     func testMarkdownHunkKeepsBlankLinesUnindented() {
         // Indenting an empty line would leave trailing whitespace inside the fence.
-        ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 1, endLine: 3, hunk: "a\n\nb",
-                                             severity: .mustFix, note: "n"))
+        ReviewDraft.shared.add(
+            ReviewComment(
+                file: "a.swift", line: 1, endLine: 3, hunk: "a\n\nb",
+                severity: .mustFix, note: "n"))
         XCTAssertTrue(ReviewDraft.shared.markdown().contains("  ```\n  a\n\n  b\n  ```"))
     }
 
     func testEmptyHunkEmitsNoFence() {
-        ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 1, endLine: nil, hunk: "",
-                                             severity: .mustFix, note: "n"))
+        ReviewDraft.shared.add(
+            ReviewComment(
+                file: "a.swift", line: 1, endLine: nil, hunk: "",
+                severity: .mustFix, note: "n"))
         XCTAssertFalse(ReviewDraft.shared.markdown().contains("```"))
     }
 
@@ -238,8 +248,8 @@ final class ReviewKitTests: XCTestCase {
 
         var fired = 0
         ReviewSession.shared.onChange = { fired += 1 }
-        ReviewSession.shared.markReviewed("a.swift", true)   // change → fires
-        ReviewSession.shared.markReviewed("a.swift", true)   // no change → silent
+        ReviewSession.shared.markReviewed("a.swift", true)  // change → fires
+        ReviewSession.shared.markReviewed("a.swift", true)  // no change → silent
         ReviewSession.shared.markReviewed("a.swift", false)  // change → fires
         XCTAssertEqual(fired, 2)
 
@@ -273,7 +283,7 @@ final class ReviewKitTests: XCTestCase {
         ReviewSession.shared.onChange = { fired += 1 }
         ReviewSession.shared.prune(to: ["keep.swift", "gone.swift"])  // nothing dropped → silent
         XCTAssertEqual(fired, 0)
-        ReviewSession.shared.prune(to: ["keep.swift"])                // entry dropped → fires
+        ReviewSession.shared.prune(to: ["keep.swift"])  // entry dropped → fires
         XCTAssertEqual(fired, 1)
 
         ReviewSession.shared.onChange = nil

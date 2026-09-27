@@ -51,8 +51,10 @@ public enum BlastRadius {
     ///   breadcrumb trail of enclosing symbols, innermost **last**.
     /// - Returns: One ``SymbolImpact`` per changed symbol that has any usages.
     /// - Note: Blocking — reads and walks the whole project tree. Call off the main thread.
-    public static func analyze(file: URL, root: URL, changedLines: Set<Int>,
-                               enclosingSymbol: (_ charOffset: Int, _ text: String) -> [String]) -> [SymbolImpact] {
+    public static func analyze(
+        file: URL, root: URL, changedLines: Set<Int>,
+        enclosingSymbol: (_ charOffset: Int, _ text: String) -> [String]
+    ) -> [SymbolImpact] {
         analyze(files: [(file, changedLines)], root: root, enclosingSymbol: enclosingSymbol)[file] ?? []
     }
 
@@ -62,10 +64,12 @@ public enum BlastRadius {
     ///
     /// - Returns: Each input file's impacts, as the per-file call gives them; unreadable files get `[]`.
     /// - Note: Blocking — walks and reads the whole project tree. Call off the main thread.
-    public static func analyze(files: [(file: URL, changedLines: Set<Int>)], root: URL,
-                               enclosingSymbol: (_ charOffset: Int, _ text: String) -> [String]) -> [URL: [SymbolImpact]] {
+    public static func analyze(
+        files: [(file: URL, changedLines: Set<Int>)], root: URL,
+        enclosingSymbol: (_ charOffset: Int, _ text: String) -> [String]
+    ) -> [URL: [SymbolImpact]] {
         var perFileSymbols: [(URL, [String])] = []
-        var allSymbols: [String] = []   // ordered, deduped across files
+        var allSymbols: [String] = []  // ordered, deduped across files
         for (file, changedLines) in files {
             guard let content = try? String(contentsOf: file, encoding: .utf8) else {
                 perFileSymbols.append((file, []))
@@ -100,8 +104,10 @@ public enum BlastRadius {
     }
 
     /// Distinct innermost enclosing symbols of the changed lines.
-    private static func changedSymbols(content: String, changedLines: Set<Int>,
-                                       enclosingSymbol: (Int, String) -> [String]) -> [String] {
+    private static func changedSymbols(
+        content: String, changedLines: Set<Int>,
+        enclosingSymbol: (Int, String) -> [String]
+    ) -> [String] {
         let ns = content as NSString
         var seen: [String] = []
         for line in changedLines.sorted() {
@@ -152,7 +158,8 @@ public enum BlastRadius {
             return c == "_" || c.isLetter || c.isNumber
         }
         var slots: [SymbolSlot] = names.compactMap { name in
-            let pattern = (isWordChar(name.first) ? "\\b" : "")
+            let pattern =
+                (isWordChar(name.first) ? "\\b" : "")
                 + NSRegularExpression.escapedPattern(for: name)
                 + (isWordChar(name.last) ? "\\b" : "")
             guard let re = try? NSRegularExpression(pattern: pattern) else { return nil }
@@ -169,7 +176,9 @@ public enum BlastRadius {
                     guard !slots[s].capped else { continue }
                     allCapped = false
                     guard slots[s].regex.firstMatch(in: line, range: r) != nil else { continue }
-                    let loc = BlastLocation(file: relPath, line: i + 1, text: line.trimmingCharacters(in: .whitespacesAndNewlines), absPath: f.path, isTest: isTest)
+                    let loc = BlastLocation(
+                        file: relPath, line: i + 1, text: line.trimmingCharacters(in: .whitespacesAndNewlines), absPath: f.path,
+                        isTest: isTest)
                     if isTest { slots[s].tests.append(loc) } else { slots[s].callers.append(loc) }
                     if slots[s].callers.count + slots[s].tests.count > 300 { slots[s].capped = true }
                 }

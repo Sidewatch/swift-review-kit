@@ -55,8 +55,9 @@ public enum DependencyManifest {
     /// what to conclude.
     public static func tooltip(forPath path: String) -> String? {
         ecosystem(forPath: path).map {
-            String(localized: "\($0) dependency manifest — this change alters what third-party code the project pulls in.", bundle: .module,
-                   comment: "Tool-tip on a changed dependency file; the argument is the ecosystem's name, such as npm or Cargo")
+            String(
+                localized: "\($0) dependency manifest — this change alters what third-party code the project pulls in.", bundle: .module,
+                comment: "Tool-tip on a changed dependency file; the argument is the ecosystem's name, such as npm or Cargo")
         }
     }
 }

@@ -33,9 +33,10 @@ final class TurnCheckpointStoreTests: XCTestCase {
     }
 
     private func checkpoint(_ id: String, _ commit: String, secondsFromNow: TimeInterval) -> TurnCheckpoint {
-        TurnCheckpoint(id: id, commit: commit,
-                       capturedAt: Date(timeIntervalSince1970: 1_000_000 + secondsFromNow),
-                       prompt: "prompt \(id)")
+        TurnCheckpoint(
+            id: id, commit: commit,
+            capturedAt: Date(timeIntervalSince1970: 1_000_000 + secondsFromNow),
+            prompt: "prompt \(id)")
     }
 
     func testRecordAndLookup() {

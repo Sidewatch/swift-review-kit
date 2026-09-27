@@ -38,7 +38,7 @@ final class BlastRadiusTests: XCTestCase {
         try write("changed.swift", "func foo() {\n    return\n}\nfoo()\n")
         try write("caller.swift", "func bar() {\n    foo()\n}\n")
         try write("MyTests.swift", "func testFoo() {\n    foo()\n}\n")
-        try write("node_modules/pkg.js", "foo();\n")   // must be skipped
+        try write("node_modules/pkg.js", "foo();\n")  // must be skipped
         try write("unrelated.swift", "func baz() {}\n")
         return root
     }
@@ -71,8 +71,10 @@ final class BlastRadiusTests: XCTestCase {
         scratch.append(root)
         try "func foo() {\r\n    return\r\n}\r\n".write(to: root.appendingPathComponent("changed.swift"), atomically: true, encoding: .utf8)
         try "func bar() {\r\n    foo()\r\n}\r\n".write(to: root.appendingPathComponent("caller.swift"), atomically: true, encoding: .utf8)
-        let impacts = BlastRadius.analyze(file: root.appendingPathComponent("changed.swift"), root: root,
-                                          changedLines: [2]) { _, _ in ["foo"] }
+        let impacts = BlastRadius.analyze(
+            file: root.appendingPathComponent("changed.swift"), root: root,
+            changedLines: [2]
+        ) { _, _ in ["foo"] }
         let caller = try XCTUnwrap(impacts.first?.callers.first { $0.file == "caller.swift" })
         XCTAssertEqual(caller.line, 2)
         XCTAssertEqual(caller.text, "foo()", "the location text is the trimmed line — a CR is not content")
@@ -127,12 +129,12 @@ final class BlastRadiusTests: XCTestCase {
             try body.write(to: url, atomically: true, encoding: .utf8)
         }
         try write("changed.swift", "func foo() {\n    return\n}\n")
-        try write("InspectorPanel.swift", "foo()\n")       // "spec" substring — NOT a test
-        try write("PerspectiveView.swift", "foo()\n")      // "spec" substring — NOT a test
+        try write("InspectorPanel.swift", "foo()\n")  // "spec" substring — NOT a test
+        try write("PerspectiveView.swift", "foo()\n")  // "spec" substring — NOT a test
         try write("caller.swift", "foo()\n")
-        try write("MyTests.swift", "foo()\n")              // *Tests.swift — a test
-        try write("tests/helpers.swift", "foo()\n")        // tests/ dir — a test
-        try write("test_foo.py", "foo()\n")                // pytest naming — a test
+        try write("MyTests.swift", "foo()\n")  // *Tests.swift — a test
+        try write("tests/helpers.swift", "foo()\n")  // tests/ dir — a test
+        try write("test_foo.py", "foo()\n")  // pytest naming — a test
 
         let changed = root.appendingPathComponent("changed.swift")
         let impacts = BlastRadius.analyze(file: changed, root: root, changedLines: [2]) { _, _ in ["foo"] }
@@ -171,8 +173,9 @@ final class BlastRadiusTests: XCTestCase {
             return ["foo"]
         }
         let offset = try XCTUnwrap(captured)
-        XCTAssertTrue((content as NSString).substring(from: offset).hasPrefix("foo()"),
-                      "git line 3 should resolve to the start of the third \\n-line, got offset \(offset)")
+        XCTAssertTrue(
+            (content as NSString).substring(from: offset).hasPrefix("foo()"),
+            "git line 3 should resolve to the start of the third \\n-line, got offset \(offset)")
     }
 
     /// Regression: the batch analyze (one tree walk + one read pass for the whole
@@ -196,9 +199,10 @@ final class BlastRadiusTests: XCTestCase {
 
         let batch = BlastRadius.analyze(files: [(a, [1]), (b, [1])], root: root, enclosingSymbol: resolver)
         for file in [a, b] {
-            XCTAssertEqual(batch[file],
-                           BlastRadius.analyze(file: file, root: root, changedLines: [1], enclosingSymbol: resolver),
-                           file.lastPathComponent)
+            XCTAssertEqual(
+                batch[file],
+                BlastRadius.analyze(file: file, root: root, changedLines: [1], enclosingSymbol: resolver),
+                file.lastPathComponent)
         }
         // The line mentioning both symbols must appear under BOTH, not just one.
         XCTAssertTrue(batch[a]?.first?.callers.contains { $0.file == "both.swift" && $0.line == 1 } ?? false)

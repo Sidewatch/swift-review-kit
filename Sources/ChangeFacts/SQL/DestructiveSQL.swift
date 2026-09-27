@@ -61,7 +61,7 @@ public enum DestructiveSQL {
         case "go": return .go
         case "java", "kt", "kts", "scala", "groovy": return .java
         case "sh", "bash", "zsh", "swift", "rs", "c", "cc", "cpp", "m", "mm", "dart", "pl", "lua", "r": return .other
-        default: return nil   // md, txt, json, yaml, csv, html, lock files, images…
+        default: return nil  // md, txt, json, yaml, csv, html, lock files, images…
         }
     }
 
@@ -87,8 +87,8 @@ public enum DestructiveSQL {
         let p = path.lowercased()
         if p.contains("migrat") || p.contains("/alembic/") || p.contains("/versions/") || p.contains("/db/migrate") { return true }
         let name = (path as NSString).lastPathComponent
-        if name.range(of: #"^\d{3,}_"#, options: .regularExpression) != nil { return true }   // 001_…, 20260920120000_…
-        return name.range(of: #"^V\d+(_\d+)*__"#, options: .regularExpression) != nil         // Flyway
+        if name.range(of: #"^\d{3,}_"#, options: .regularExpression) != nil { return true }  // 001_…, 20260920120000_…
+        return name.range(of: #"^V\d+(_\d+)*__"#, options: .regularExpression) != nil  // Flyway
     }
 
     // MARK: - The scan
@@ -99,11 +99,14 @@ public enum DestructiveSQL {
         guard let dialect = dialect(forPath: path), !isSkippedPath(path) else { return [] }
         if isDatabaseDump(text) {
             let drops = matches(of: #"(?i)\bDROP\s+TABLE\b"#, in: text).count
-            let f = Finding(line: 1, endLine: 1, severity: .destructive,
-                            summary: drops > 0
-                                ? String(localized: "database dump (\(drops) DROP TABLE)", bundle: .module, comment: "SQL finding: a database dump file, then how many DROP TABLE statements it has (SQL, stays as is)")
-                                : String(localized: "database dump", bundle: .module, comment: "SQL finding: the file is a database dump"))
-            if let addedLines, !addedLines.isEmpty, addedLines.min()! > 200 { return [] }   // an edit deep in an existing dump
+            let f = Finding(
+                line: 1, endLine: 1, severity: .destructive,
+                summary: drops > 0
+                    ? String(
+                        localized: "database dump (\(drops) DROP TABLE)", bundle: .module,
+                        comment: "SQL finding: a database dump file, then how many DROP TABLE statements it has (SQL, stays as is)")
+                    : String(localized: "database dump", bundle: .module, comment: "SQL finding: the file is a database dump"))
+            if let addedLines, !addedLines.isEmpty, addedLines.min()! > 200 { return [] }  // an edit deep in an existing dump
             return [f]
         }
         let clean = stripped(text, dialect: dialect)
@@ -113,86 +116,164 @@ public enum DestructiveSQL {
 
         // --- SQL, whichever file it sits in
         for m in matches(of: #"(?i)\bDROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?((?:[\w"`\[\]]+\.)?[\w"`\[\]]+)"#, in: clean) {
-            out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location), severity: .destructive, summary: "DROP TABLE \(ident(m, 1, clean))"))
+            out.append(
+                Finding(
+                    line: line(at: m.range.location), endLine: line(at: m.range.location), severity: .destructive,
+                    summary: "DROP TABLE \(ident(m, 1, clean))"))
         }
         for m in matches(of: #"(?i)\bDROP\s+(DATABASE|SCHEMA)\s+(?:IF\s+EXISTS\s+)?([\w"`\[\]]+)"#, in: clean) {
-            out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location), severity: .destructive, summary: "DROP \(ident(m, 1, clean).uppercased()) \(ident(m, 2, clean))"))
+            out.append(
+                Finding(
+                    line: line(at: m.range.location), endLine: line(at: m.range.location), severity: .destructive,
+                    summary: "DROP \(ident(m, 1, clean).uppercased()) \(ident(m, 2, clean))"))
         }
-        for m in matches(of: #"(?i)\bALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?((?:[\w"`\[\]]+\.)?[\w"`\[\]]+)\b([^;]*?)\bDROP\s+(?!INDEX\b|CONSTRAINT\b|DEFAULT\b|NOT\s+NULL\b|PRIMARY\b|FOREIGN\b|CHECK\b|IDENTITY\b|PARTITION\b|KEY\b|TRIGGER\b)(?:COLUMN\s+)?(?:IF\s+EXISTS\s+)?([\w"`\[\]]+)"#, in: clean) {
+        for m in matches(
+            of:
+                #"(?i)\bALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?((?:[\w"`\[\]]+\.)?[\w"`\[\]]+)\b([^;]*?)\bDROP\s+(?!INDEX\b|CONSTRAINT\b|DEFAULT\b|NOT\s+NULL\b|PRIMARY\b|FOREIGN\b|CHECK\b|IDENTITY\b|PARTITION\b|KEY\b|TRIGGER\b)(?:COLUMN\s+)?(?:IF\s+EXISTS\s+)?([\w"`\[\]]+)"#,
+            in: clean)
+        {
             let at = m.range.location
-            out.append(Finding(line: line(at: at), endLine: line(at: at + m.range.length), severity: .destructive, summary: "DROP COLUMN \(ident(m, 1, clean)).\(ident(m, 3, clean))"))
+            out.append(
+                Finding(
+                    line: line(at: at), endLine: line(at: at + m.range.length), severity: .destructive,
+                    summary: "DROP COLUMN \(ident(m, 1, clean)).\(ident(m, 3, clean))"))
         }
         for m in matches(of: #"(?i)\bTRUNCATE\s+(?:TABLE\s+)?(?:ONLY\s+)?((?:[\w"`\[\]]+\.)?[\w"`\[\]]+)"#, in: clean) {
-            out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location), severity: .destructive, summary: "TRUNCATE \(ident(m, 1, clean))"))
+            out.append(
+                Finding(
+                    line: line(at: m.range.location), endLine: line(at: m.range.location), severity: .destructive,
+                    summary: "TRUNCATE \(ident(m, 1, clean))"))
         }
         for m in matches(of: #"(?i)\bDELETE\s+FROM\s+(?:ONLY\s+)?((?:[\w"`\[\]]+\.)?[\w"`\[\]]+)"#, in: clean) {
             let body = statementBody(from: m.range.location, in: clean, dialect: dialect)
             if let why = unconditioned(body) {
                 let table = ident(m, 1, clean)
-                let summary = why == "WHERE 1=1"
-                    ? String(localized: "DELETE WHERE 1=1 on \(table)", bundle: .module, comment: "SQL finding: a DELETE whose WHERE matches every row; the argument is a table name. SQL words stay as is")
-                    : String(localized: "DELETE without WHERE on \(table)", bundle: .module, comment: "SQL finding: a DELETE with no WHERE clause; the argument is a table name. SQL words stay as is")
-                out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location + body.count), severity: .destructive, summary: summary))
+                let summary =
+                    why == "WHERE 1=1"
+                    ? String(
+                        localized: "DELETE WHERE 1=1 on \(table)", bundle: .module,
+                        comment: "SQL finding: a DELETE whose WHERE matches every row; the argument is a table name. SQL words stay as is")
+                    : String(
+                        localized: "DELETE without WHERE on \(table)", bundle: .module,
+                        comment: "SQL finding: a DELETE with no WHERE clause; the argument is a table name. SQL words stay as is")
+                out.append(
+                    Finding(
+                        line: line(at: m.range.location), endLine: line(at: m.range.location + body.count), severity: .destructive,
+                        summary: summary))
             }
         }
         for m in matches(of: #"(?i)\bUPDATE\s+(?:ONLY\s+)?((?:[\w"`\[\]]+\.)?[\w"`\[\]]+)\s+SET\b"#, in: clean) {
             let body = statementBody(from: m.range.location, in: clean, dialect: dialect)
             if let why = unconditioned(body) {
                 let table = ident(m, 1, clean)
-                let summary = why == "WHERE 1=1"
-                    ? String(localized: "UPDATE WHERE 1=1 on \(table)", bundle: .module, comment: "SQL finding: an UPDATE whose WHERE matches every row; the argument is a table name. SQL words stay as is")
-                    : String(localized: "UPDATE without WHERE on \(table)", bundle: .module, comment: "SQL finding: an UPDATE with no WHERE clause; the argument is a table name. SQL words stay as is")
-                out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location + body.count), severity: .destructive, summary: summary))
+                let summary =
+                    why == "WHERE 1=1"
+                    ? String(
+                        localized: "UPDATE WHERE 1=1 on \(table)", bundle: .module,
+                        comment: "SQL finding: an UPDATE whose WHERE matches every row; the argument is a table name. SQL words stay as is")
+                    : String(
+                        localized: "UPDATE without WHERE on \(table)", bundle: .module,
+                        comment: "SQL finding: an UPDATE with no WHERE clause; the argument is a table name. SQL words stay as is")
+                out.append(
+                    Finding(
+                        line: line(at: m.range.location), endLine: line(at: m.range.location + body.count), severity: .destructive,
+                        summary: summary))
             }
         }
-        for m in matches(of: #"(?i)\bALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?((?:[\w"`\[\]]+\.)?[\w"`\[\]]+)\b[^;]*?\b(?:ALTER\s+(?:COLUMN\s+)?([\w"`\[\]]+)\s+(?:SET\s+DATA\s+)?TYPE\b|MODIFY\s+(?:COLUMN\s+)?([\w"`\[\]]+)\s+\w|CHANGE\s+(?:COLUMN\s+)?([\w"`\[\]]+)\s+[\w"`\[\]]+\s+\w|ALTER\s+COLUMN\s+([\w"`\[\]]+)\s+(?:VARCHAR|NVARCHAR|CHAR|INT|BIGINT|SMALLINT|TINYINT|DECIMAL|NUMERIC|FLOAT|REAL|TEXT|DATE|DATETIME|TIMESTAMP|BOOLEAN|BIT|UUID|JSON|JSONB|BLOB|BYTEA)\b)"#, in: clean) {
+        for m in matches(
+            of:
+                #"(?i)\bALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?((?:[\w"`\[\]]+\.)?[\w"`\[\]]+)\b[^;]*?\b(?:ALTER\s+(?:COLUMN\s+)?([\w"`\[\]]+)\s+(?:SET\s+DATA\s+)?TYPE\b|MODIFY\s+(?:COLUMN\s+)?([\w"`\[\]]+)\s+\w|CHANGE\s+(?:COLUMN\s+)?([\w"`\[\]]+)\s+[\w"`\[\]]+\s+\w|ALTER\s+COLUMN\s+([\w"`\[\]]+)\s+(?:VARCHAR|NVARCHAR|CHAR|INT|BIGINT|SMALLINT|TINYINT|DECIMAL|NUMERIC|FLOAT|REAL|TEXT|DATE|DATETIME|TIMESTAMP|BOOLEAN|BIT|UUID|JSON|JSONB|BLOB|BYTEA)\b)"#,
+            in: clean)
+        {
             let column = [2, 3, 4, 5].compactMap { m.range(at: $0).location == NSNotFound ? nil : ident(m, $0, clean) }.first ?? "?"
-            out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location + m.range.length), severity: .caution, summary: typeChanged("\(ident(m, 1, clean)).\(column)")))
+            out.append(
+                Finding(
+                    line: line(at: m.range.location), endLine: line(at: m.range.location + m.range.length), severity: .caution,
+                    summary: typeChanged("\(ident(m, 1, clean)).\(column)")))
         }
 
         // --- Migration DSLs
         let dsl: [(pattern: String, severity: Severity, summary: (NSTextCheckingResult) -> String)]
         switch dialect {
-        case .ruby: dsl = [
-            (#"\bdrop_table[\s(]+:?["']?(\w+)"#, .destructive, { "drop_table \(ident($0, 1, clean))" }),
-            (#"\bremove_columns?[\s(]+:?["']?(\w+)["']?\s*,\s*:?["']?(\w+)"#, .destructive, { "remove_column \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
-            (#"\bremove_(?:reference|belongs_to)[\s(]+:?["']?(\w+)["']?\s*,\s*:?["']?(\w+)"#, .destructive, { "remove_reference \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
-            (#"\bchange_column[\s(]+:?["']?(\w+)["']?\s*,\s*:?["']?(\w+)"#, .caution, { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }),
-        ]
-        case .python: dsl = [
-            (#"migrations\.DeleteModel\(\s*(?:name\s*=\s*)?["'](\w+)"#, .destructive, { "DeleteModel \(ident($0, 1, clean))" }),
-            (#"migrations\.RemoveField\(\s*(?:model_name\s*=\s*)?["'](\w+)["']\s*,\s*(?:name\s*=\s*)?["'](\w+)"#, .destructive, { "RemoveField \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
-            (#"migrations\.AlterField\(\s*(?:model_name\s*=\s*)?["'](\w+)["']\s*,\s*(?:name\s*=\s*)?["'](\w+)"#, .caution, { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }),
-            (#"\bop\.drop_table\(\s*["'](\w+)"#, .destructive, { "op.drop_table \(ident($0, 1, clean))" }),
-            (#"\bop\.drop_column\(\s*["'](\w+)["']\s*,\s*["'](\w+)"#, .destructive, { "op.drop_column \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
-            (#"\bop\.alter_column\(\s*["'](\w+)["']\s*,\s*["'](\w+)["'][^)]*\btype_\s*="#, .caution, { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }),
-        ]
-        case .javascript: dsl = [
-            (#"\.dropTable(?:IfExists)?\(\s*["'`](\w+)"#, .destructive, { "dropTable \(ident($0, 1, clean))" }),
-            (#"\.dropColumns?\(\s*\[?\s*["'`](\w+)"#, .destructive, { "dropColumn \(ident($0, 1, clean))" }),
-            (#"\.removeColumn\(\s*["'`](\w+)["'`]\s*,\s*["'`](\w+)"#, .destructive, { "removeColumn \(ident($0, 1, clean)).\(ident($0, 2, clean))" }),
-            (#"\.changeColumn\(\s*["'`](\w+)["'`]\s*,\s*["'`](\w+)"#, .caution, { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }),
-        ]
-        case .php: dsl = [
-            (#"Schema::drop(?:IfExists)?\(\s*["'](\w+)"#, .destructive, { "Schema::drop \(ident($0, 1, clean))" }),
-            (#"->dropColumn\(\s*\[?\s*["'](\w+)"#, .destructive, { "dropColumn \(ident($0, 1, clean))" }),
-            (#"\$table->\w+\(\s*["'](\w+)["'][^;]*?->change\(\)"#, .caution, { typeChanged(ident($0, 1, clean)) }),
-        ]
-        case .elixir: dsl = [
-            (#"\bdrop(?:_if_exists)?\s+(?:if_exists\s+)?table\(\s*:?["']?(\w+)"#, .destructive, { "drop table \(ident($0, 1, clean))" }),
-            (#"^\s*remove\s+:(\w+)"#, .destructive, { "remove :\(ident($0, 1, clean))" }),
-            (#"^\s*modify\s+:(\w+)"#, .caution, { typeChanged(ident($0, 1, clean)) }),
-        ]
-        case .csharp: dsl = [
-            (#"\.DropTable\(\s*(?:name\s*:\s*)?"(\w+)"#, .destructive, { "DropTable \(ident($0, 1, clean))" }),
-            (#"\.DropColumn(?:<\w+>)?\(\s*(?:name\s*:\s*)?"(\w+)""#, .destructive, { "DropColumn \(ident($0, 1, clean))" }),
-            (#"\.AlterColumn<\w+>\(\s*(?:name\s*:\s*)?"(\w+)""#, .caution, { typeChanged(ident($0, 1, clean)) }),
-        ]
+        case .ruby:
+            dsl = [
+                (#"\bdrop_table[\s(]+:?["']?(\w+)"#, .destructive, { "drop_table \(ident($0, 1, clean))" }),
+                (
+                    #"\bremove_columns?[\s(]+:?["']?(\w+)["']?\s*,\s*:?["']?(\w+)"#, .destructive,
+                    { "remove_column \(ident($0, 1, clean)).\(ident($0, 2, clean))" }
+                ),
+                (
+                    #"\bremove_(?:reference|belongs_to)[\s(]+:?["']?(\w+)["']?\s*,\s*:?["']?(\w+)"#, .destructive,
+                    { "remove_reference \(ident($0, 1, clean)).\(ident($0, 2, clean))" }
+                ),
+                (
+                    #"\bchange_column[\s(]+:?["']?(\w+)["']?\s*,\s*:?["']?(\w+)"#, .caution,
+                    { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }
+                ),
+            ]
+        case .python:
+            dsl = [
+                (#"migrations\.DeleteModel\(\s*(?:name\s*=\s*)?["'](\w+)"#, .destructive, { "DeleteModel \(ident($0, 1, clean))" }),
+                (
+                    #"migrations\.RemoveField\(\s*(?:model_name\s*=\s*)?["'](\w+)["']\s*,\s*(?:name\s*=\s*)?["'](\w+)"#, .destructive,
+                    { "RemoveField \(ident($0, 1, clean)).\(ident($0, 2, clean))" }
+                ),
+                (
+                    #"migrations\.AlterField\(\s*(?:model_name\s*=\s*)?["'](\w+)["']\s*,\s*(?:name\s*=\s*)?["'](\w+)"#, .caution,
+                    { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }
+                ),
+                (#"\bop\.drop_table\(\s*["'](\w+)"#, .destructive, { "op.drop_table \(ident($0, 1, clean))" }),
+                (
+                    #"\bop\.drop_column\(\s*["'](\w+)["']\s*,\s*["'](\w+)"#, .destructive,
+                    { "op.drop_column \(ident($0, 1, clean)).\(ident($0, 2, clean))" }
+                ),
+                (
+                    #"\bop\.alter_column\(\s*["'](\w+)["']\s*,\s*["'](\w+)["'][^)]*\btype_\s*="#, .caution,
+                    { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }
+                ),
+            ]
+        case .javascript:
+            dsl = [
+                (#"\.dropTable(?:IfExists)?\(\s*["'`](\w+)"#, .destructive, { "dropTable \(ident($0, 1, clean))" }),
+                (#"\.dropColumns?\(\s*\[?\s*["'`](\w+)"#, .destructive, { "dropColumn \(ident($0, 1, clean))" }),
+                (
+                    #"\.removeColumn\(\s*["'`](\w+)["'`]\s*,\s*["'`](\w+)"#, .destructive,
+                    { "removeColumn \(ident($0, 1, clean)).\(ident($0, 2, clean))" }
+                ),
+                (
+                    #"\.changeColumn\(\s*["'`](\w+)["'`]\s*,\s*["'`](\w+)"#, .caution,
+                    { typeChanged("\(ident($0, 1, clean)).\(ident($0, 2, clean))") }
+                ),
+            ]
+        case .php:
+            dsl = [
+                (#"Schema::drop(?:IfExists)?\(\s*["'](\w+)"#, .destructive, { "Schema::drop \(ident($0, 1, clean))" }),
+                (#"->dropColumn\(\s*\[?\s*["'](\w+)"#, .destructive, { "dropColumn \(ident($0, 1, clean))" }),
+                (#"\$table->\w+\(\s*["'](\w+)["'][^;]*?->change\(\)"#, .caution, { typeChanged(ident($0, 1, clean)) }),
+            ]
+        case .elixir:
+            dsl = [
+                (
+                    #"\bdrop(?:_if_exists)?\s+(?:if_exists\s+)?table\(\s*:?["']?(\w+)"#, .destructive,
+                    { "drop table \(ident($0, 1, clean))" }
+                ),
+                (#"^\s*remove\s+:(\w+)"#, .destructive, { "remove :\(ident($0, 1, clean))" }),
+                (#"^\s*modify\s+:(\w+)"#, .caution, { typeChanged(ident($0, 1, clean)) }),
+            ]
+        case .csharp:
+            dsl = [
+                (#"\.DropTable\(\s*(?:name\s*:\s*)?"(\w+)"#, .destructive, { "DropTable \(ident($0, 1, clean))" }),
+                (#"\.DropColumn(?:<\w+>)?\(\s*(?:name\s*:\s*)?"(\w+)""#, .destructive, { "DropColumn \(ident($0, 1, clean))" }),
+                (#"\.AlterColumn<\w+>\(\s*(?:name\s*:\s*)?"(\w+)""#, .caution, { typeChanged(ident($0, 1, clean)) }),
+            ]
         default: dsl = []
         }
         for rule in dsl {
             for m in matches(of: rule.pattern, in: clean, anchorsMatchLines: true) {
-                out.append(Finding(line: line(at: m.range.location), endLine: line(at: m.range.location + m.range.length), severity: rule.severity, summary: rule.summary(m)))
+                out.append(
+                    Finding(
+                        line: line(at: m.range.location), endLine: line(at: m.range.location + m.range.length), severity: rule.severity,
+                        summary: rule.summary(m)))
             }
         }
 
@@ -216,12 +297,22 @@ public enum DestructiveSQL {
         switch dialect {
         case .javascript:
             let up = has(#"\b(?:exports\.up|export\s+(?:const|async\s+function|function)\s+up|async\s+up\s*\(|\bup\s*:\s*async|\bup\s*\()"#)
-            let down = has(#"\b(?:exports\.down|export\s+(?:const|async\s+function|function)\s+down|async\s+down\s*\(|\bdown\s*:\s*async|\bdown\s*\()"#)
+            let down = has(
+                #"\b(?:exports\.down|export\s+(?:const|async\s+function|function)\s+down|async\s+down\s*\(|\bdown\s*:\s*async|\bdown\s*\()"#
+            )
             if up && !down { return noDownMigration }
             if up, has(#"\b(?:async\s+)?down\s*\([^)]*\)\s*(?::\s*\w+(?:<\w+>)?\s*)?\{\s*\}"#) { return downMigrationIsEmpty }
         case .python:
-            if has(#"\bdef\s+upgrade\s*\("#), has(#"\bdef\s+downgrade\s*\([^)]*\)\s*(?:->\s*\w+\s*)?:\s*(?:#[^\n]*\n\s*)?pass\b"#) { return String(localized: "downgrade is a pass", bundle: .module, comment: "Migration finding: the Python downgrade function only says pass, so it undoes nothing") }
-            if has(#"\bdef\s+upgrade\s*\("#), !has(#"\bdef\s+downgrade\s*\("#) { return String(localized: "no downgrade", bundle: .module, comment: "Migration finding: the Python migration has no downgrade function") }
+            if has(#"\bdef\s+upgrade\s*\("#), has(#"\bdef\s+downgrade\s*\([^)]*\)\s*(?:->\s*\w+\s*)?:\s*(?:#[^\n]*\n\s*)?pass\b"#) {
+                return String(
+                    localized: "downgrade is a pass", bundle: .module,
+                    comment: "Migration finding: the Python downgrade function only says pass, so it undoes nothing")
+            }
+            if has(#"\bdef\s+upgrade\s*\("#), !has(#"\bdef\s+downgrade\s*\("#) {
+                return String(
+                    localized: "no downgrade", bundle: .module, comment: "Migration finding: the Python migration has no downgrade function"
+                )
+            }
         case .ruby:
             if has(#"\bdef\s+up\b"#), !has(#"\bdef\s+down\b"#) { return noDownMigration }
         case .php:
@@ -234,12 +325,16 @@ public enum DestructiveSQL {
 
     /// The finding for a column whose type changed; `target` is `table.column` or `column`.
     private static func typeChanged(_ target: String) -> String {
-        String(localized: "column type changed: \(target)", bundle: .module, comment: "SQL finding: a column's type was changed; the argument is table.column or a column name")
+        String(
+            localized: "column type changed: \(target)", bundle: .module,
+            comment: "SQL finding: a column's type was changed; the argument is table.column or a column name")
     }
 
     /// The finding for a migration with an up step and no down step.
     private static var noDownMigration: String {
-        String(localized: "no down migration", bundle: .module, comment: "Migration finding: the migration can be applied but has no step to undo it")
+        String(
+            localized: "no down migration", bundle: .module,
+            comment: "Migration finding: the migration can be applied but has no step to undo it")
     }
 
     /// The finding for a migration whose down step does nothing.
@@ -251,15 +346,23 @@ public enum DestructiveSQL {
     public static func tooltip(for findings: [Finding]) -> String? {
         guard !findings.isEmpty else { return nil }
         let destructive = findings.filter { $0.severity == .destructive }.count
-        let head = destructive > 0
-            ? String(localized: "Destructive SQL added", bundle: .module, comment: "Tool-tip headline on a changed file whose new SQL can lose data")
-            : String(localized: "SQL caution added", bundle: .module, comment: "Tool-tip headline on a changed file whose new SQL may lose data")
+        let head =
+            destructive > 0
+            ? String(
+                localized: "Destructive SQL added", bundle: .module,
+                comment: "Tool-tip headline on a changed file whose new SQL can lose data")
+            : String(
+                localized: "SQL caution added", bundle: .module, comment: "Tool-tip headline on a changed file whose new SQL may lose data")
         var list = findings.prefix(6).map {
-            String(localized: "line \(String($0.line)): \($0.summary)", bundle: .module, comment: "One SQL finding in a tool-tip: the line number, then what was found")
+            String(
+                localized: "line \(String($0.line)): \($0.summary)", bundle: .module,
+                comment: "One SQL finding in a tool-tip: the line number, then what was found")
         }.joined(separator: "; ")
         if findings.count > 6 {
-            list = String(localized: "\(list); and \(findings.count - 6) more", bundle: .module,
-                          comment: "A shortened list: the first argument is a semicolon-separated list of changes, the second how many more were left out")
+            list = String(
+                localized: "\(list); and \(findings.count - 6) more", bundle: .module,
+                comment:
+                    "A shortened list: the first argument is a semicolon-separated list of changes, the second how many more were left out")
         }
         return head + " — " + list
     }
@@ -273,7 +376,7 @@ public enum DestructiveSQL {
     public static func marks(forChunk chunk: [String], path: String) -> [Int: Finding] {
         guard dialect(forPath: path) != nil, !isSkippedPath(path) else { return [:] }
         var newText: [String] = []
-        var visibleForNewLine: [Int] = []   // newText index → visible index
+        var visibleForNewLine: [Int] = []  // newText index → visible index
         var added = Set<Int>()
         var inHunk = false
         var visible = -1
@@ -282,7 +385,7 @@ public enum DestructiveSQL {
             if raw.hasPrefix("@@") {
                 inHunk = true
                 visible += 1
-                if !newText.isEmpty { newText.append(";"); visibleForNewLine.append(-1) }   // no statement spans hunks
+                if !newText.isEmpty { newText.append(";"); visibleForNewLine.append(-1) }  // no statement spans hunks
                 continue
             }
             guard inHunk else { continue }
@@ -299,8 +402,13 @@ public enum DestructiveSQL {
             let idx = f.line - 1
             guard visibleForNewLine.indices.contains(idx), visibleForNewLine[idx] >= 0 else { continue }
             let v = visibleForNewLine[idx]
-            if let existing = out[v] { out[v] = Finding(line: existing.line, endLine: existing.endLine, severity: existing.severity == .destructive ? .destructive : f.severity, summary: existing.summary + "; " + f.summary) }
-            else { out[v] = f }
+            if let existing = out[v] {
+                out[v] = Finding(
+                    line: existing.line, endLine: existing.endLine, severity: existing.severity == .destructive ? .destructive : f.severity,
+                    summary: existing.summary + "; " + f.summary)
+            } else {
+                out[v] = f
+            }
         }
         return out
     }
@@ -311,7 +419,8 @@ public enum DestructiveSQL {
     /// newline kept so offsets still map to lines.
     public static func stripped(_ text: String, dialect: Dialect) -> String {
         let hash = dialect == .ruby || dialect == .python || dialect == .elixir || dialect == .php || dialect == .other || dialect == .sql
-        let slash = dialect == .javascript || dialect == .php || dialect == .csharp || dialect == .go || dialect == .java || dialect == .other
+        let slash =
+            dialect == .javascript || dialect == .php || dialect == .csharp || dialect == .go || dialect == .java || dialect == .other
         let dashes = dialect == .sql || dialect == .other
         let blankLiterals = dialect == .sql
         let chars = Array(text.utf16)
@@ -325,7 +434,11 @@ public enum DestructiveSQL {
             let c = chars[i]
             if inLine { if c == nl { inLine = false } else { out[i] = 32 }; i += 1; continue }
             if inBlock {
-                if c == 42, at(i + 1) == 47 { out[i] = 32; out[i + 1] = 32; inBlock = false; i += 2 } else { if c != nl { out[i] = 32 }; i += 1 }
+                if c == 42, at(i + 1) == 47 {
+                    out[i] = 32; out[i + 1] = 32; inBlock = false; i += 2
+                } else {
+                    if c != nl { out[i] = 32 }; i += 1
+                }
                 continue
             }
             if tripleDouble || tripleSingle {
@@ -334,9 +447,15 @@ public enum DestructiveSQL {
                 continue
             }
             if inSingle {
-                if c == 92 { if blankLiterals { out[i] = 32; if i + 1 < chars.count, chars[i + 1] != nl { out[i + 1] = 32 } }; i += 2; continue }
-                if c == 39 { if at(i + 1) == 39 && dialect == .sql { if blankLiterals { out[i] = 32; out[i + 1] = 32 }; i += 2; continue }; inSingle = false }
-                else if blankLiterals, c != nl { out[i] = 32 }
+                if c == 92 {
+                    if blankLiterals { out[i] = 32; if i + 1 < chars.count, chars[i + 1] != nl { out[i + 1] = 32 } }; i += 2; continue
+                }
+                if c == 39 {
+                    if at(i + 1) == 39 && dialect == .sql { if blankLiterals { out[i] = 32; out[i + 1] = 32 }; i += 2; continue };
+                    inSingle = false
+                } else if blankLiterals, c != nl {
+                    out[i] = 32
+                }
                 i += 1; continue
             }
             if inDouble { if c == 92 { i += 2; continue }; if c == 34 { inDouble = false }; i += 1; continue }
@@ -365,11 +484,11 @@ public enum DestructiveSQL {
         var last: unichar = 0
         while i < end {
             let c = ns.character(at: i)
-            if c == 59 { break }                                                     // ;
-            if c == 10, last == 10 { break }                                         // blank line
-            if dialect != .sql, c == 34 || c == 39 || c == 96 {                      // a closing quote…
+            if c == 59 { break }  // ;
+            if c == 10, last == 10 { break }  // blank line
+            if dialect != .sql, c == 34 || c == 39 || c == 96 {  // a closing quote…
                 let next = i + 1 < ns.length ? ns.character(at: i + 1) : 0
-                if next == 41 || next == 44 || next == 59 || next == 10 || next == 32 || next == 0 { break }   // …then ) , ; newline space
+                if next == 41 || next == 44 || next == 59 || next == 10 || next == 32 || next == 0 { break }  // …then ) , ; newline space
             }
             last = c
             i += 1
@@ -380,7 +499,9 @@ public enum DestructiveSQL {
     /// nil when the statement has a real WHERE; else why it is unconditioned.
     public static func unconditioned(_ body: String) -> String? {
         guard body.range(of: #"\bWHERE\b"#, options: [.regularExpression, .caseInsensitive]) != nil else { return "without WHERE" }
-        if body.range(of: #"\bWHERE\s+(?:1\s*=\s*1|TRUE|1)\s*(?:$|\)|;)"#, options: [.regularExpression, .caseInsensitive]) != nil { return "WHERE 1=1" }
+        if body.range(of: #"\bWHERE\s+(?:1\s*=\s*1|TRUE|1)\s*(?:$|\)|;)"#, options: [.regularExpression, .caseInsensitive]) != nil {
+            return "WHERE 1=1"
+        }
         return nil
     }
 
@@ -396,7 +517,8 @@ public enum DestructiveSQL {
     public static func ident(_ m: NSTextCheckingResult, _ group: Int, _ text: String) -> String {
         let r = m.range(at: group)
         guard r.location != NSNotFound else { return "?" }
-        return (text as NSString).substring(with: r).replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "`", with: "").replacingOccurrences(of: "[", with: "").replacingOccurrences(of: "]", with: "")
+        return (text as NSString).substring(with: r).replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "`", with: "")
+            .replacingOccurrences(of: "[", with: "").replacingOccurrences(of: "]", with: "")
     }
 
     /// The UTF-16 offset each line of `text` starts at, for ``lineNumber(at:starts:)``.

@@ -77,14 +77,30 @@ public enum TestRuns {
         /// "npm test: no summary".
         public var summary: String {
             switch (outcome, passed, failed) {
-            case (.unknown, _, _): return String(localized: "\(runner): no summary", bundle: .module, comment: "Test run row; the argument is the test runner, such as npm test. The runner printed no readable result")
-            case (_, let p?, let f?): return String(localized: "\(runner): \(p) passed, \(f) failed", bundle: .module, comment: "Test run row: the test runner, then how many tests passed and failed")
-            case (_, let p?, nil): return String(localized: "\(runner): \(p) passed", bundle: .module, comment: "Test run row: the test runner, then how many tests passed")
-            case (_, nil, let f?): return String(localized: "\(runner): \(f) failed", bundle: .module, comment: "Test run row: the test runner, then how many tests failed")
+            case (.unknown, _, _):
+                return String(
+                    localized: "\(runner): no summary", bundle: .module,
+                    comment: "Test run row; the argument is the test runner, such as npm test. The runner printed no readable result")
+            case (_, let p?, let f?):
+                return String(
+                    localized: "\(runner): \(p) passed, \(f) failed", bundle: .module,
+                    comment: "Test run row: the test runner, then how many tests passed and failed")
+            case (_, let p?, nil):
+                return String(
+                    localized: "\(runner): \(p) passed", bundle: .module,
+                    comment: "Test run row: the test runner, then how many tests passed")
+            case (_, nil, let f?):
+                return String(
+                    localized: "\(runner): \(f) failed", bundle: .module,
+                    comment: "Test run row: the test runner, then how many tests failed")
             default:
                 return outcome == .passed
-                    ? String(localized: "\(runner): passed", bundle: .module, comment: "Test run row: the test runner, then its verdict with no counts")
-                    : String(localized: "\(runner): FAIL", bundle: .module, comment: "Test run row: the test runner, then its verdict with no counts")
+                    ? String(
+                        localized: "\(runner): passed", bundle: .module,
+                        comment: "Test run row: the test runner, then its verdict with no counts")
+                    : String(
+                        localized: "\(runner): FAIL", bundle: .module,
+                        comment: "Test run row: the test runner, then its verdict with no counts")
             }
         }
     }
@@ -109,10 +125,12 @@ public enum TestRuns {
         guard !paths.isEmpty else { return nil }
         let tests = paths.filter(isTestPath).count
         if tests == 0 {
-            return String(localized: "\(paths.count) changed files, none are tests", bundle: .module, comment: "Tool-tip on the changed-files count")
+            return String(
+                localized: "\(paths.count) changed files, none are tests", bundle: .module, comment: "Tool-tip on the changed-files count")
         }
-        return String(localized: "\(paths.count) changed files, \(tests) are tests", bundle: .module,
-                      comment: "Tool-tip on the changed-files count: how many files changed, then how many of them are test files")
+        return String(
+            localized: "\(paths.count) changed files, \(tests) are tests", bundle: .module,
+            comment: "Tool-tip on the changed-files count: how many files changed, then how many of them are test files")
     }
 
     // MARK: - Runs
@@ -129,8 +147,9 @@ public enum TestRuns {
         ShellCommandLine.segments(of: command).compactMap { segment in
             guard let runner = runner(of: segment) else { return nil }
             let report = parse(runner: runner, output: output, isError: isError)
-            return Run(runner: runner, command: segment, passed: report.passed, failed: report.failed,
-                       outcome: report.outcome, timestamp: timestamp)
+            return Run(
+                runner: runner, command: segment, passed: report.passed, failed: report.failed,
+                outcome: report.outcome, timestamp: timestamp)
         }
     }
 
@@ -149,7 +168,7 @@ public enum TestRuns {
         case "jest", "vitest", "mocha", "ava", "tap", "karma": return tool
         case "playwright", "cypress": return sub == "test" || sub == "run" ? "\(tool) test" : nil
         case "pytest", "py.test": return "pytest"
-        case "-m":   // python -m pytest / unittest: the interpreter rule left "-m" as the tool
+        case "-m":  // python -m pytest / unittest: the interpreter rule left "-m" as the tool
             return ["pytest", "unittest"].contains(args.first ?? "") ? args.first! : nil
         case "go": return sub == "test" ? "go test" : nil
         case "cargo": return sub == "test" || sub == "nextest" ? "cargo test" : nil
@@ -177,7 +196,8 @@ public enum TestRuns {
         let report: Report?
         switch runner {
         case "swift test", "xcodebuild test": report = xctest(output)
-        case "npm test", "pnpm test", "yarn test", "bun test", "jest", "vitest", "playwright test", "cypress test", "ava", "tap", "karma", "mocha":
+        case "npm test", "pnpm test", "yarn test", "bun test", "jest", "vitest", "playwright test", "cypress test", "ava", "tap", "karma",
+            "mocha":
             report = javascript(output)
         case "pytest", "unittest": report = python(output)
         case "go test": report = go(output)
@@ -202,9 +222,15 @@ public enum TestRuns {
 
     /// XCTest and Swift Testing, through `swift test` or `xcodebuild test`.
     private static func xctest(_ text: String) -> Report? {
-        if let m = last(#"Executed (\d+) tests?, with (\d+) failures?"#, text), let t = int(m[1]), let f = int(m[2]) { return .verdict(t - f, f) }
+        if let m = last(#"Executed (\d+) tests?, with (\d+) failures?"#, text), let t = int(m[1]), let f = int(m[2]) {
+            return .verdict(t - f, f)
+        }
         if let m = last(#"Test run with (\d+) tests? (?:in .*? )?passed"#, text), let t = int(m[1]) { return .verdict(t, 0) }
-        if let m = last(#"Test run with (\d+) tests? (?:in .*? )?failed after .*? with (\d+) issues?"#, text), let t = int(m[1]), let f = int(m[2]) { return .verdict(t - f, f) }
+        if let m = last(#"Test run with (\d+) tests? (?:in .*? )?failed after .*? with (\d+) issues?"#, text), let t = int(m[1]),
+            let f = int(m[2])
+        {
+            return .verdict(t - f, f)
+        }
         if text.contains("** TEST SUCCEEDED **") { return Report(passed: nil, failed: nil, outcome: .passed) }
         if text.contains("** TEST FAILED **") { return Report(passed: nil, failed: nil, outcome: .failed) }
         return nil
@@ -212,13 +238,16 @@ public enum TestRuns {
 
     /// jest, vitest, mocha, bun / playwright, tap / node:test — whichever wrote the summary.
     private static func javascript(_ text: String) -> Report? {
-        if let m = last(#"Tests:\s+(?:(\d+) failed, )?(?:(\d+) skipped, )?(?:(\d+) todo, )?(\d+) passed, (\d+) total"#, text) {   // jest
+        if let m = last(#"Tests:\s+(?:(\d+) failed, )?(?:(\d+) skipped, )?(?:(\d+) todo, )?(\d+) passed, (\d+) total"#, text) {  // jest
             return .verdict(int(m[4]), int(m[1].isEmpty ? "0" : m[1]))
         }
-        if let m = last(#"Tests\s+(?:(\d+) failed \| )?(\d+) passed"#, text) { return .verdict(int(m[2]), int(m[1].isEmpty ? "0" : m[1])) }   // vitest
-        if let m = last(#"(\d+) passing"#, text) { return .verdict(int(m[1]), int(last(#"(\d+) failing"#, text)?[1] ?? "0")) }   // mocha
-        if let m = last(#"(\d+) pass(?:ed)?\b"#, text) { return .verdict(int(m[1]), int(last(#"(\d+) fail(?:ed)?\b"#, text)?[1] ?? "0")) }   // bun, playwright
-        if let m = last(#"# pass\s+(\d+)"#, text) { return .verdict(int(m[1]), int(last(#"# fail\s+(\d+)"#, text)?[1] ?? "0")) }   // tap / node:test
+        // vitest
+        if let m = last(#"Tests\s+(?:(\d+) failed \| )?(\d+) passed"#, text) { return .verdict(int(m[2]), int(m[1].isEmpty ? "0" : m[1])) }
+        if let m = last(#"(\d+) passing"#, text) { return .verdict(int(m[1]), int(last(#"(\d+) failing"#, text)?[1] ?? "0")) }  // mocha
+        // bun, playwright
+        if let m = last(#"(\d+) pass(?:ed)?\b"#, text) { return .verdict(int(m[1]), int(last(#"(\d+) fail(?:ed)?\b"#, text)?[1] ?? "0")) }
+        // tap / node:test
+        if let m = last(#"# pass\s+(\d+)"#, text) { return .verdict(int(m[1]), int(last(#"# fail\s+(\d+)"#, text)?[1] ?? "0")) }
         return nil
     }
 
@@ -231,9 +260,11 @@ public enum TestRuns {
         let e = last(#"(\d+) errors?\b"#, text).flatMap { int($0[1]) }
         if p != nil || f != nil || e != nil { return .verdict(p ?? 0, (f ?? 0) + (e ?? 0)) }
         if text.contains("no tests ran") { return Report(passed: 0, failed: 0, outcome: .passed) }
-        if let m = last(#"Ran (\d+) tests?"#, text), let t = int(m[1]) {   // unittest
+        if let m = last(#"Ran (\d+) tests?"#, text), let t = int(m[1]) {  // unittest
             if text.contains("\nOK") || text.hasSuffix("OK") { return .verdict(t, 0) }
-            if let f = last(#"FAILED \((?:failures=(\d+))?(?:, )?(?:errors=(\d+))?"#, text) { let n = (int(f[1]) ?? 0) + (int(f[2]) ?? 0); return .verdict(t - n, n) }
+            if let f = last(#"FAILED \((?:failures=(\d+))?(?:, )?(?:errors=(\d+))?"#, text) {
+                let n = (int(f[1]) ?? 0) + (int(f[2]) ?? 0); return .verdict(t - n, n)
+            }
         }
         return nil
     }
@@ -262,7 +293,8 @@ public enum TestRuns {
     /// Rails / minitest: "20 runs, 41 assertions, 1 failures, 1 errors, 0 skips".
     private static func minitest(_ text: String) -> Report? {
         guard let m = last(#"(\d+) runs, \d+ assertions, (\d+) failures, (\d+) errors"#, text),
-              let t = int(m[1]), let f = int(m[2]), let e = int(m[3]) else { return nil }
+            let t = int(m[1]), let f = int(m[2]), let e = int(m[3])
+        else { return nil }
         return .verdict(t - f - e, f + e)
     }
 
@@ -273,7 +305,8 @@ public enum TestRuns {
             let n = (int(m[2]) ?? 0) + (int(m[3]) ?? 0)
             return .verdict(t - n, n)
         }
-        if let m = last(#"Tests:\s+(?:(\d+) failed, )?(\d+) passed"#, text) { return .verdict(int(m[2]), int(m[1].isEmpty ? "0" : m[1])) }   // pest
+        // pest
+        if let m = last(#"Tests:\s+(?:(\d+) failed, )?(\d+) passed"#, text) { return .verdict(int(m[2]), int(m[1].isEmpty ? "0" : m[1])) }
         return nil
     }
 
@@ -312,7 +345,9 @@ public enum TestRuns {
     }
 
     private static func ctest(_ text: String) -> Report? {
-        guard let m = last(#"(\d+)% tests passed, (\d+) tests failed out of (\d+)"#, text), let f = int(m[2]), let t = int(m[3]) else { return nil }
+        guard let m = last(#"(\d+)% tests passed, (\d+) tests failed out of (\d+)"#, text), let f = int(m[2]), let t = int(m[3]) else {
+            return nil
+        }
         return .verdict(t - f, f)
     }
 }

@@ -18,14 +18,17 @@ final class ShellCommandLineTests: XCTestCase {
 
     func testALineSplitsOnAndOrSemicolonPipeAndNewlineButNotInsideQuotes() {
         let line = "cd app && psql -c \"DELETE FROM a; DELETE FROM b\" | tee log; echo 'x && y'\nswift test || echo failed"
-        XCTAssertEqual(ShellCommandLine.segments(of: line),
-                       ["cd app", "psql -c \"DELETE FROM a; DELETE FROM b\"", "tee log", "echo 'x && y'", "swift test", "echo failed"])
+        XCTAssertEqual(
+            ShellCommandLine.segments(of: line),
+            ["cd app", "psql -c \"DELETE FROM a; DELETE FROM b\"", "tee log", "echo 'x && y'", "swift test", "echo failed"])
     }
 
     func testAHeredocStaysWithTheSegmentThatOpenedIt() {
         let line = "psql <<'SQL'\nDROP TABLE a && b;\nSQL\necho done"
         XCTAssertEqual(ShellCommandLine.segments(of: line), ["psql <<'SQL'\nDROP TABLE a && b;\nSQL", "echo done"])
-        XCTAssertEqual(ShellCommandLine.segments(of: "cat <<-EOF\n\tindented\n\tEOF"), ["cat <<-EOF\n\tindented\n\tEOF"], "<<- strips tabs before the closing tag")
+        XCTAssertEqual(
+            ShellCommandLine.segments(of: "cat <<-EOF\n\tindented\n\tEOF"), ["cat <<-EOF\n\tindented\n\tEOF"],
+            "<<- strips tabs before the closing tag")
         XCTAssertEqual(ShellCommandLine.segments(of: "psql << \"SQL\"\nSELECT 1;\nSQL"), ["psql << \"SQL\"\nSELECT 1;\nSQL"])
     }
 
@@ -36,8 +39,11 @@ final class ShellCommandLineTests: XCTestCase {
     }
 
     func testWordsGroupByQuotesAndDropThem() {
-        XCTAssertEqual(ShellCommandLine.words("psql -c \"DELETE FROM a; b\" 'x y' plain"), ["psql", "-c", "DELETE FROM a; b", "x y", "plain"])
-        XCTAssertEqual(ShellCommandLine.words("echo \"a \\\"q\\\" b\" c\\ d"), ["echo", "a \"q\" b", "c d"], "backslash escapes inside and outside quotes")
+        XCTAssertEqual(
+            ShellCommandLine.words("psql -c \"DELETE FROM a; b\" 'x y' plain"), ["psql", "-c", "DELETE FROM a; b", "x y", "plain"])
+        XCTAssertEqual(
+            ShellCommandLine.words("echo \"a \\\"q\\\" b\" c\\ d"), ["echo", "a \"q\" b", "c d"],
+            "backslash escapes inside and outside quotes")
         XCTAssertEqual(ShellCommandLine.words("psql -c ''"), ["psql", "-c", ""], "an empty quoted string is a word")
         XCTAssertEqual(ShellCommandLine.words("   "), [])
     }

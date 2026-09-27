@@ -15,11 +15,16 @@ let package = Package(
         .package(path: "../swift-sqlite-reader"),
     ],
     targets: [
-        .target(name: "ReviewKit", dependencies: [.product(name: "ProcessRunner", package: "swift-foundation-extensions"),
-                                                  .product(name: "FoundationExtensions", package: "swift-foundation-extensions")],
-                swiftSettings: [.swiftLanguageMode(.v6)]),
-        .target(name: "ChangeFacts", dependencies: [.product(name: "SQLiteReader", package: "swift-sqlite-reader")],
-                resources: [.process("Localizable.xcstrings")], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .target(
+            name: "ReviewKit",
+            dependencies: [
+                .product(name: "ProcessRunner", package: "swift-foundation-extensions"),
+                .product(name: "FoundationExtensions", package: "swift-foundation-extensions"),
+            ],
+            swiftSettings: [.swiftLanguageMode(.v6)]),
+        .target(
+            name: "ChangeFacts", dependencies: [.product(name: "SQLiteReader", package: "swift-sqlite-reader")],
+            resources: [.process("Localizable.xcstrings")], swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(name: "BlastRadius", swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(name: "ReviewKitTests", dependencies: ["ReviewKit"]),
         .testTarget(name: "ChangeFactsTests", dependencies: ["ChangeFacts"], resources: [.copy("Fixtures")]),

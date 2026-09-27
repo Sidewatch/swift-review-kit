@@ -17,8 +17,12 @@ final class SchemaTests: XCTestCase {
         let url = try XCTUnwrap(Bundle.module.url(forResource: "Fixtures/schemas/" + name, withExtension: nil), "fixture \(name)")
         return try String(contentsOf: url, encoding: .utf8)
     }
-    private func table(_ m: SchemaModel?, _ name: String) -> SchemaModel.Table? { m?.tables.first { $0.name.lowercased() == name.lowercased() } }
-    private func col(_ t: SchemaModel.Table?, _ name: String) -> SchemaModel.Column? { t?.columns.first { $0.name.lowercased() == name.lowercased() } }
+    private func table(_ m: SchemaModel?, _ name: String) -> SchemaModel.Table? {
+        m?.tables.first { $0.name.lowercased() == name.lowercased() }
+    }
+    private func col(_ t: SchemaModel.Table?, _ name: String) -> SchemaModel.Column? {
+        t?.columns.first { $0.name.lowercased() == name.lowercased() }
+    }
 
     func testPrisma() throws {
         let prisma = SchemaModel.load(text: try read("schema.prisma"), path: "prisma/schema.prisma")
@@ -58,8 +62,10 @@ final class SchemaTests: XCTestCase {
         XCTAssertEqual(django?.tables.count, 4, "the abstract base is not a table; its field is inherited")
         XCTAssertNil(table(django, "timestamped"))
         XCTAssertEqual(col(users, "id")?.pk, true); XCTAssertEqual(col(users, "created_at")?.type, "DATETIME")
-        XCTAssertEqual(col(users, "email")?.type, "VARCHAR(120)"); XCTAssertEqual(col(users, "name")?.notNull, false); XCTAssertEqual(col(users, "is_admin")?.type, "BOOLEAN")
-        XCTAssertEqual(profile?.foreignKeys, [SchemaModel.ForeignKey(column: "user_id", toTable: "users", toColumn: "id")]); XCTAssertEqual(col(profile, "user_id")?.notNull, true)
+        XCTAssertEqual(col(users, "email")?.type, "VARCHAR(120)"); XCTAssertEqual(col(users, "name")?.notNull, false);
+        XCTAssertEqual(col(users, "is_admin")?.type, "BOOLEAN")
+        XCTAssertEqual(profile?.foreignKeys, [SchemaModel.ForeignKey(column: "user_id", toTable: "users", toColumn: "id")]);
+        XCTAssertEqual(col(profile, "user_id")?.notNull, true)
         XCTAssertEqual(post?.foreignKeys, [SchemaModel.ForeignKey(column: "author_id", toTable: "users", toColumn: "id")])
         XCTAssertNil(col(post, "tags"), "ManyToMany is not a column"); XCTAssertEqual(col(post, "price")?.type, "DECIMAL(10,2)")
         XCTAssertTrue(post?.indexes.contains { $0.columns == ["author_id", "title"] && $0.unique } == true)
@@ -67,7 +73,8 @@ final class SchemaTests: XCTestCase {
     }
 
     func testTolerantDDL() {
-        let postgres = "CREATE EXTENSION IF NOT EXISTS pgcrypto;\nCREATE TABLE a (id serial primary key, note text default 'x;y');\n-- a comment; with a semicolon\nALTER TABLE a ADD CONSTRAINT fk FOREIGN KEY (b) REFERENCES c(id);\nCREATE TABLE b (id int);\n"
+        let postgres =
+            "CREATE EXTENSION IF NOT EXISTS pgcrypto;\nCREATE TABLE a (id serial primary key, note text default 'x;y');\n-- a comment; with a semicolon\nALTER TABLE a ADD CONSTRAINT fk FOREIGN KEY (b) REFERENCES c(id);\nCREATE TABLE b (id int);\n"
         let tolerant = SchemaModel.load(text: postgres, path: "db/schema.sql")
         XCTAssertEqual(tolerant?.tables.map(\.name), ["a", "b"], "a rejected statement in the middle loses nothing after it")
         XCTAssertEqual(SchemaModel.statements(in: postgres).count, 4, "a ; inside a literal or a comment does not split")
@@ -77,14 +84,19 @@ final class SchemaTests: XCTestCase {
 
     func testTheDiff() throws {
         let original = try read("schema.prisma")
-        let changed = original
+        let changed =
+            original
             .replacingOccurrences(of: "  legacyId  Int?     @map(\"legacy_id\")\n", with: "")
             .replacingOccurrences(of: "@db.VarChar(120)", with: "@db.VarChar(80)")
-            .replacingOccurrences(of: "  published Boolean  @default(false)\n", with: "  published Boolean  @default(false)\n  views     Int      @default(0)\n")
+            .replacingOccurrences(
+                of: "  published Boolean  @default(false)\n",
+                with: "  published Boolean  @default(false)\n  views     Int      @default(0)\n"
+            )
             .replacingOccurrences(of: "  @@index([createdAt])\n", with: "")
         var withoutTag = changed
         if let r = withoutTag.range(of: "model Tag {") { withoutTag = String(withoutTag[..<r.lowerBound]) }
-        let old = try XCTUnwrap(SchemaModel.load(text: original, path: "schema.prisma")), new = try XCTUnwrap(SchemaModel.load(text: withoutTag, path: "schema.prisma"))
+        let old = try XCTUnwrap(SchemaModel.load(text: original, path: "schema.prisma")),
+            new = try XCTUnwrap(SchemaModel.load(text: withoutTag, path: "schema.prisma"))
         let facts = SchemaDiff.compare(old: old, new: new)
         let summaries = facts.map { "\($0.severity):\($0.summary)" }
         XCTAssertTrue(summaries.contains("destructive:table Tag removed (2 columns)"))
@@ -93,14 +105,24 @@ final class SchemaTests: XCTestCase {
         XCTAssertTrue(summaries.contains("info:column posts.views added (INTEGER, NOT NULL)"))
         XCTAssertTrue(summaries.contains("info:index on users(created_at) removed"))
         XCTAssertEqual(facts.count, 5, "\(summaries)")
-        XCTAssertEqual(SchemaDiff.headline(facts), "Schema: 1 table removed, 1 column removed, 1 column added, 1 type change, 1 index change")
+        XCTAssertEqual(
+            SchemaDiff.headline(facts), "Schema: 1 table removed, 1 column removed, 1 column added, 1 type change, 1 index change")
         XCTAssertTrue(SchemaDiff.tooltip(facts)?.contains("column users.legacy_id removed") == true)
         XCTAssertTrue(SchemaDiff.compare(old: old, new: old).isEmpty, "no change is no fact")
-        XCTAssertEqual(SchemaDiff.compare(old: SchemaModel.load(ddl: "CREATE TABLE a (id int);"), new: SchemaModel.load(ddl: "CREATE TABLE b (id int);")).map(\.summary),
-                       ["table a removed (1 column)", "table b added (1 column)"], "a rename reads as a removal and an addition")
-        XCTAssertEqual(SchemaDiff.compare(old: SchemaModel.load(ddl: "CREATE TABLE a (id int, x text);"), new: SchemaModel.load(ddl: "CREATE TABLE a (id int, x text not null, y int references b(id));")).map(\.summary),
-                       ["column a.y added (INT)", "column a.x now NOT NULL", "foreign key a.y → b.id added"])
-        XCTAssertEqual(SchemaDiff.facts(oldText: "", newText: "CREATE TABLE t (id int);", path: "schema.sql").map(\.summary), ["table t added (1 column)"], "an untracked schema is all additions")
+        XCTAssertEqual(
+            SchemaDiff.compare(
+                old: SchemaModel.load(ddl: "CREATE TABLE a (id int);"), new: SchemaModel.load(ddl: "CREATE TABLE b (id int);")
+            ).map(\.summary),
+            ["table a removed (1 column)", "table b added (1 column)"], "a rename reads as a removal and an addition")
+        XCTAssertEqual(
+            SchemaDiff.compare(
+                old: SchemaModel.load(ddl: "CREATE TABLE a (id int, x text);"),
+                new: SchemaModel.load(ddl: "CREATE TABLE a (id int, x text not null, y int references b(id));")
+            ).map(\.summary),
+            ["column a.y added (INT)", "column a.x now NOT NULL", "foreign key a.y → b.id added"])
+        XCTAssertEqual(
+            SchemaDiff.facts(oldText: "", newText: "CREATE TABLE t (id int);", path: "schema.sql").map(\.summary),
+            ["table t added (1 column)"], "an untracked schema is all additions")
         XCTAssertTrue(SchemaDiff.facts(oldText: nil, newText: "hello", path: "notes.md").isEmpty)
     }
 }

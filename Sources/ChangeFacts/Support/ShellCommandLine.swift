@@ -58,7 +58,7 @@ public enum ShellCommandLine {
                 current += "\n" + line
                 if line.trimmingCharacters(in: CharacterSet(charactersIn: "\t")) == tag {
                     heredocTag = nil
-                    if n < lines.count - 1 { out.append(current); current = "" }   // the command ended with its body
+                    if n < lines.count - 1 { out.append(current); current = "" }  // the command ended with its body
                 }
                 continue
             }
@@ -97,7 +97,9 @@ public enum ShellCommandLine {
             if let pending = heredocPending { heredocTag = pending; heredocPending = nil; continue }
             if n < lines.count - 1, !inSingle, !inDouble, heredocTag == nil {
                 let trimmed = current.trimmingCharacters(in: .whitespaces)
-                if trimmed.hasSuffix("\\") { current = String(trimmed.dropLast()).trimmingCharacters(in: .whitespaces) + " "; continued = true; continue }   // a continued line
+                if trimmed.hasSuffix("\\") {
+                    current = String(trimmed.dropLast()).trimmingCharacters(in: .whitespaces) + " "; continued = true; continue
+                }  // a continued line
                 out.append(current); current = ""
             } else if inSingle || inDouble {
                 current.append("\n")
@@ -120,7 +122,9 @@ public enum ShellCommandLine {
             while k < line.endIndex, line[k] != q { tag.append(line[k]); k = line.index(after: k) }
             if k < line.endIndex { k = line.index(after: k) }
         } else {
-            while k < line.endIndex, line[k].isLetter || line[k].isNumber || line[k] == "_" { tag.append(line[k]); k = line.index(after: k) }
+            while k < line.endIndex, line[k].isLetter || line[k].isNumber || line[k] == "_" {
+                tag.append(line[k]); k = line.index(after: k)
+            }
         }
         return (tag, k)
     }
@@ -138,7 +142,9 @@ public enum ShellCommandLine {
             let c = line[i]
             if inSingle { if c == "'" { inSingle = false } else { current.append(c) }; i = line.index(after: i); continue }
             if inDouble {
-                if c == "\\", line.index(after: i) < line.endIndex { i = line.index(after: i); current.append(line[i]); i = line.index(after: i); continue }
+                if c == "\\", line.index(after: i) < line.endIndex {
+                    i = line.index(after: i); current.append(line[i]); i = line.index(after: i); continue
+                }
                 if c == "\"" { inDouble = false } else { current.append(c) }
                 i = line.index(after: i); continue
             }
@@ -202,7 +208,9 @@ public enum ShellCommandLine {
         while peeled, !words.isEmpty {
             peeled = false
             let w = words[0]
-            if w.range(of: #"^[A-Za-z_][A-Za-z0-9_]*=.*"#, options: .regularExpression) != nil { words.removeFirst(); peeled = true; continue }
+            if w.range(of: #"^[A-Za-z_][A-Za-z0-9_]*=.*"#, options: .regularExpression) != nil {
+                words.removeFirst(); peeled = true; continue
+            }
             guard wrappers.contains(w) else { break }
             guard let rest = peelWrapper(w, from: words) else { break }
             words = rest
@@ -239,9 +247,11 @@ public enum ShellCommandLine {
             if w == "docker", k < words.count, words[k] == "compose" { k += 1 }
             guard k < words.count, words[k] == "exec" || words[k] == "run" else { return nil }
             k += 1
-            while k < words.count, words[k].hasPrefix("-") { k += (["-e", "--env", "-u", "--user", "-w", "--workdir"].contains(words[k]) ? 2 : 1) }
+            while k < words.count, words[k].hasPrefix("-") {
+                k += (["-e", "--env", "-u", "--user", "-w", "--workdir"].contains(words[k]) ? 2 : 1)
+            }
             guard k < words.count else { return nil }
-            words.removeFirst(k + 1)   // the service / container name too
+            words.removeFirst(k + 1)  // the service / container name too
         case "kubectl":
             guard words.count > 1, words[1] == "exec", let dash = words.firstIndex(of: "--") else { return nil }
             words.removeFirst(dash + 1)

@@ -103,24 +103,32 @@ public final class TurnCheckpointStore {
     /// Writes the whole per-repo store to `UserDefaults.standard` as plist-safe dictionaries.
     private func save() {
         let flat = byRepo.mapValues { list in
-            list.map { ["id": $0.id, "commit": $0.commit,
-                        "at": $0.capturedAt.timeIntervalSince1970, "prompt": $0.prompt] as [String: Any] }
+            list.map {
+                [
+                    "id": $0.id, "commit": $0.commit,
+                    "at": $0.capturedAt.timeIntervalSince1970, "prompt": $0.prompt,
+                ] as [String: Any]
+            }
         }
         UserDefaults.standard.set(flat, forKey: "sidewatch.turnCheckpoints")
     }
 
     /// Restores the per-repo store (a no-op if absent, and skipping any malformed entry).
     private func load() {
-        guard let flat = UserDefaults.standard.dictionary(forKey: "sidewatch.turnCheckpoints")
-                as? [String: [[String: Any]]] else { return }
+        guard
+            let flat = UserDefaults.standard.dictionary(forKey: "sidewatch.turnCheckpoints")
+                as? [String: [[String: Any]]]
+        else { return }
         byRepo = flat.mapValues { entries in
             entries.compactMap { entry in
                 guard let id = entry["id"] as? String,
-                      let commit = entry["commit"] as? String,
-                      let at = entry["at"] as? TimeInterval else { return nil }
-                return TurnCheckpoint(id: id, commit: commit,
-                                      capturedAt: Date(timeIntervalSince1970: at),
-                                      prompt: entry["prompt"] as? String ?? "")
+                    let commit = entry["commit"] as? String,
+                    let at = entry["at"] as? TimeInterval
+                else { return nil }
+                return TurnCheckpoint(
+                    id: id, commit: commit,
+                    capturedAt: Date(timeIntervalSince1970: at),
+                    prompt: entry["prompt"] as? String ?? "")
             }
         }
     }

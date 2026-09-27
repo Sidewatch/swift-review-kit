@@ -53,7 +53,8 @@ public enum SchemaDDL {
             modelNames.insert(model)
             var map: [String: String] = [:]
             for line in group(m, 2, clean).components(separatedBy: "\n") {
-                let parts = line.trimmingCharacters(in: .whitespaces).split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+                let parts = line.trimmingCharacters(in: .whitespaces).split(separator: " ", omittingEmptySubsequences: true).map(
+                    String.init)
                 guard parts.count >= 2, !parts[0].hasPrefix("@@") else { continue }
                 if let mapped = matches(#"@map\("([^"]+)"\)"#, line).first { map[parts[0]] = group(mapped, 1, line) }
             }
@@ -77,7 +78,9 @@ public enum SchemaDDL {
                 if line.hasPrefix("@@unique(") || line.hasPrefix("@@index(") {
                     let cols = bracketList(in: line).map(colName)
                     let unique = line.hasPrefix("@@unique(")
-                    indexes.append("CREATE \(unique ? "UNIQUE " : "")INDEX \(quote("\(table)_\(cols.joined(separator: "_"))_\(unique ? "key" : "idx")")) ON \(quote(table)) (\(cols.map(quote).joined(separator: ", ")));")
+                    indexes.append(
+                        "CREATE \(unique ? "UNIQUE " : "")INDEX \(quote("\(table)_\(cols.joined(separator: "_"))_\(unique ? "key" : "idx")")) ON \(quote(table)) (\(cols.map(quote).joined(separator: ", ")));"
+                    )
                     continue
                 }
                 if line.hasPrefix("@@") { continue }
@@ -97,23 +100,27 @@ public enum SchemaDDL {
                         let refs = list(named: "references", in: inner).map { columnMaps[type]?[$0] ?? $0 }
                         if !fields.isEmpty, fields.count == refs.count {
                             let target = modelTable(type, clean)
-                            constraints.append("FOREIGN KEY (\(fields.map(quote).joined(separator: ", "))) REFERENCES \(quote(target)) (\(refs.map(quote).joined(separator: ", ")))")
+                            constraints.append(
+                                "FOREIGN KEY (\(fields.map(quote).joined(separator: ", "))) REFERENCES \(quote(target)) (\(refs.map(quote).joined(separator: ", ")))"
+                            )
                         }
                     }
                     continue
                 }
-                if isList { continue }   // scalar lists are Postgres arrays; not a column the diagram draws
+                if isList { continue }  // scalar lists are Postgres arrays; not a column the diagram draws
                 var column = field
                 if let mapped = matches(#"@map\("([^"]+)"\)"#, attrs).first { column = group(mapped, 1, attrs) }
                 var sqlType = prismaType(type, isEnum: enums.contains(type))
                 if let native = matches(#"@db\.(\w+)(\([^)]*\))?"#, attrs).first {
-                    sqlType = group(native, 1, attrs).uppercased() + (native.range(at: 2).location == NSNotFound ? "" : group(native, 2, attrs))
+                    sqlType =
+                        group(native, 1, attrs).uppercased() + (native.range(at: 2).location == NSNotFound ? "" : group(native, 2, attrs))
                 }
                 var decl = "\(quote(column)) \(sqlType)"
-                if attrs.contains("@id") && compositeId == nil { decl += " PRIMARY KEY" }
-                else if !optional { decl += " NOT NULL" }
+                if attrs.contains("@id") && compositeId == nil { decl += " PRIMARY KEY" } else if !optional { decl += " NOT NULL" }
                 if attrs.contains("@unique") { decl += " UNIQUE" }
-                if let def = matches(#"@default\(([^)]*)\)"#, attrs).first, let literal = literalDefault(group(def, 1, attrs)) { decl += " DEFAULT \(literal)" }
+                if let def = matches(#"@default\(([^)]*)\)"#, attrs).first, let literal = literalDefault(group(def, 1, attrs)) {
+                    decl += " DEFAULT \(literal)"
+                }
                 columns.append(decl)
                 _ = field
             }
@@ -125,7 +132,9 @@ public enum SchemaDDL {
     }
 
     private static func modelTable(_ model: String, _ text: String) -> String {
-        guard let m = matches(#"\bmodel\s+"# + NSRegularExpression.escapedPattern(for: model) + #"\s*\{([^}]*)\}"#, text).first else { return model }
+        guard let m = matches(#"\bmodel\s+"# + NSRegularExpression.escapedPattern(for: model) + #"\s*\{([^}]*)\}"#, text).first else {
+            return model
+        }
         let body = group(m, 1, text)
         if let map = matches(#"@@map\("([^"]+)"\)"#, body).first { return group(map, 1, body) }
         return model
@@ -176,8 +185,12 @@ public enum SchemaDDL {
                 if line.hasPrefix("t.index ") {
                     let cols = bracketList(in: line)
                     let unique = line.contains("unique: true")
-                    let name = matches(#"name:\s*"([^"]+)""#, line).first.map { group($0, 1, line) } ?? "index_\(table)_on_\(cols.joined(separator: "_and_"))"
-                    laterStatements.append("CREATE \(unique ? "UNIQUE " : "")INDEX \(quote(name)) ON \(quote(table)) (\(cols.map(quote).joined(separator: ", ")));")
+                    let name =
+                        matches(#"name:\s*"([^"]+)""#, line).first.map { group($0, 1, line) }
+                        ?? "index_\(table)_on_\(cols.joined(separator: "_and_"))"
+                    laterStatements.append(
+                        "CREATE \(unique ? "UNIQUE " : "")INDEX \(quote(name)) ON \(quote(table)) (\(cols.map(quote).joined(separator: ", ")));"
+                    )
                     continue
                 }
                 guard let call = matches(#"^t\.(\w+)\s+"([^"]+)"(.*)$"#, line).first else { continue }
@@ -197,7 +210,9 @@ public enum SchemaDDL {
                 if opts.contains("null: false") { decl += " NOT NULL" }
                 if let def = matches(#"default:\s*("[^"]*"|[-\d.]+|true|false|nil)"#, opts).first {
                     let raw = group(def, 1, opts)
-                    if raw != "nil" { decl += " DEFAULT \(raw == "true" ? "1" : raw == "false" ? "0" : raw.replacingOccurrences(of: "\"", with: "'"))" }
+                    if raw != "nil" {
+                        decl += " DEFAULT \(raw == "true" ? "1" : raw == "false" ? "0" : raw.replacingOccurrences(of: "\"", with: "'"))"
+                    }
                 }
                 columns.append(decl)
             }
@@ -210,15 +225,20 @@ public enum SchemaDDL {
             let column = matches(#"column:\s*"([^"]+)""#, opts).first.map { group($0, 1, opts) } ?? singular(to) + "_id"
             let primary = matches(#"primary_key:\s*"([^"]+)""#, opts).first.map { group($0, 1, opts) } ?? "id"
             if let i = out.firstIndex(where: { $0.hasPrefix("CREATE TABLE \(quote(from)) (") }) {
-                out[i] = out[i].replacingOccurrences(of: "\n);", with: ",\n  FOREIGN KEY (\(quote(column))) REFERENCES \(quote(to)) (\(quote(primary)))\n);")
+                out[i] = out[i].replacingOccurrences(
+                    of: "\n);", with: ",\n  FOREIGN KEY (\(quote(column))) REFERENCES \(quote(to)) (\(quote(primary)))\n);")
             }
         }
         for m in matches(#"add_index\s+"([^"]+)",\s*(\[[^\]]*\]|"[^"]+")([^\n]*)"#, clean) {
             let table = group(m, 1, clean), colsRaw = group(m, 2, clean), opts = group(m, 3, clean)
-            let cols = colsRaw.hasPrefix("[") ? bracketList(in: colsRaw) : [colsRaw.trimmingCharacters(in: CharacterSet(charactersIn: "\""))]
+            let cols =
+                colsRaw.hasPrefix("[") ? bracketList(in: colsRaw) : [colsRaw.trimmingCharacters(in: CharacterSet(charactersIn: "\""))]
             let unique = opts.contains("unique: true")
-            let name = matches(#"name:\s*"([^"]+)""#, opts).first.map { group($0, 1, opts) } ?? "index_\(table)_on_\(cols.joined(separator: "_and_"))"
-            laterStatements.append("CREATE \(unique ? "UNIQUE " : "")INDEX \(quote(name)) ON \(quote(table)) (\(cols.map(quote).joined(separator: ", ")));")
+            let name =
+                matches(#"name:\s*"([^"]+)""#, opts).first.map { group($0, 1, opts) }
+                ?? "index_\(table)_on_\(cols.joined(separator: "_and_"))"
+            laterStatements.append(
+                "CREATE \(unique ? "UNIQUE " : "")INDEX \(quote(name)) ON \(quote(table)) (\(cols.map(quote).joined(separator: ", ")));")
         }
         return (out + laterStatements).joined(separator: "\n")
     }
@@ -251,7 +271,7 @@ public enum SchemaDDL {
 
     /// The DDL for a Django `models.py`: model fields, `db_table`, foreign keys as `<name>_id`.
     public static func django(_ text: String) -> String {
-        let clean = stripComments(text, line: "#") + "\n"   // a final line without a newline is still a body line
+        let clean = stripComments(text, line: "#") + "\n"  // a final line without a newline is still a body line
         var out: [String] = []
         var laterIndexes: [String] = []
         // Each class body is the run of indented (or blank) lines under it, one line per
@@ -271,9 +291,16 @@ public enum SchemaDDL {
             let name = group(m, 1, clean), bases = group(m, 2, clean)
             guard !abstract.contains(name) else { continue }
             // An abstract base's fields come first, as Django lays the table out.
-            let inherited = bases.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { abstract.contains($0) }.compactMap { bodies[$0] }
+            let inherited = bases.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { abstract.contains($0) }
+                .compactMap { bodies[$0] }
             let body = joinContinuations(inherited.joined(separator: "\n") + "\n" + group(m, 3, clean))
-            guard bases.contains("Model") || bases.split(separator: ",").contains(where: { tableNames[$0.trimmingCharacters(in: .whitespaces)] != nil || abstract.contains($0.trimmingCharacters(in: .whitespaces)) }) else { continue }
+            guard
+                bases.contains("Model")
+                    || bases.split(separator: ",").contains(where: {
+                        tableNames[$0.trimmingCharacters(in: .whitespaces)] != nil
+                            || abstract.contains($0.trimmingCharacters(in: .whitespaces))
+                    })
+            else { continue }
             let table = tableNames[name] ?? name.lowercased()
             var columns: [String] = []
             var constraints: [String] = []
@@ -285,7 +312,8 @@ public enum SchemaDDL {
                 let primary = args.range(of: #"primary_key\s*=\s*True"#, options: .regularExpression) != nil
                 let unique = args.range(of: #"unique\s*=\s*True"#, options: .regularExpression) != nil
                 if kind == "ForeignKey" || kind == "OneToOneField" {
-                    let target = args.split(separator: ",").first.map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"'")) } ?? ""
+                    let target =
+                        args.split(separator: ",").first.map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"'")) } ?? ""
                     let targetTable = tableNames[target] ?? target.lowercased()
                     let column = field + "_id"
                     var decl = "\(quote(column)) INTEGER"
@@ -306,11 +334,15 @@ public enum SchemaDDL {
             }
             if !hasPK { columns.insert("\(quote("id")) INTEGER PRIMARY KEY", at: 0) }
             for ut in matches(#"unique_together\s*=\s*[\[\(]\s*\(([^)]*)\)"#, body) {
-                let cols = group(ut, 1, body).components(separatedBy: ",").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"'")) }.filter { !$0.isEmpty }
+                let cols = group(ut, 1, body).components(separatedBy: ",").map {
+                    $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"'"))
+                }.filter { !$0.isEmpty }
                     .map { tableNames.keys.contains(where: { _ in false }) ? $0 : $0 }
                 // A foreign-key field in the tuple is its `_id` column.
                 let mapped = cols.map { c in columns.contains(where: { $0.hasPrefix(quote(c + "_id")) }) ? c + "_id" : c }
-                laterIndexes.append("CREATE UNIQUE INDEX \(quote("\(table)_\(mapped.joined(separator: "_"))_uniq")) ON \(quote(table)) (\(mapped.map(quote).joined(separator: ", ")));")
+                laterIndexes.append(
+                    "CREATE UNIQUE INDEX \(quote("\(table)_\(mapped.joined(separator: "_"))_uniq")) ON \(quote(table)) (\(mapped.map(quote).joined(separator: ", ")));"
+                )
             }
             out.append("CREATE TABLE \(quote(table)) (\n  " + (columns + constraints).joined(separator: ",\n  ") + "\n);")
         }
@@ -391,7 +423,9 @@ public enum SchemaDDL {
     /// `[a, b]` → ["a", "b"], quotes and spaces removed.
     public static func bracketList(in s: String) -> [String] {
         guard let m = matches(#"\[([^\]]*)\]"#, s).first else { return [] }
-        return group(m, 1, s).components(separatedBy: ",").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"':")) }.filter { !$0.isEmpty }
+        return group(m, 1, s).components(separatedBy: ",").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"':")) }.filter {
+            !$0.isEmpty
+        }
     }
 
     /// The items of `name: [a, b]` in `s`, trimmed of spaces only.
@@ -407,7 +441,7 @@ public enum SchemaDDL {
         if v == "false" { return "0" }
         if v.hasPrefix("\"") { return "'" + v.dropFirst().dropLast().replacingOccurrences(of: "'", with: "''") + "'" }
         if Double(v) != nil { return v }
-        if v.range(of: #"^[A-Z_]+$"#, options: .regularExpression) != nil { return "'\(v)'" }   // an enum value
+        if v.range(of: #"^[A-Z_]+$"#, options: .regularExpression) != nil { return "'\(v)'" }  // an enum value
         return nil
     }
 
