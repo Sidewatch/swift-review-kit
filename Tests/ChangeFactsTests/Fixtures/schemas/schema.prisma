@@ -1,0 +1,56 @@
+// Prisma schema for the ER diagram and the structural schema diff.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique @db.VarChar(120)
+  name      String?
+  role      Role     @default(USER)
+  legacyId  Int?     @map("legacy_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  posts     Post[]
+  profile   Profile?
+
+  @@map("users")
+  @@index([createdAt])
+}
+
+model Profile {
+  id     Int    @id @default(autoincrement())
+  bio    String
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(200)
+  body      String?
+  published Boolean  @default(false)
+  authorId  String   @map("author_id")
+  author    User     @relation(fields: [authorId], references: [id])
+  tags      Tag[]
+
+  @@map("posts")
+  @@unique([authorId, title])
+}
+
+model Tag {
+  id    Int    @id @default(autoincrement())
+  label String @unique
+  posts Post[]
+}
