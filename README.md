@@ -1,76 +1,39 @@
 # Swift Review Kit
 
-A tiny, dependency-free model layer for a code-review pass over a set of changed files — collect line-pinned comments and emit them as one clean markdown block, and track which files you've marked *reviewed* across relaunches. The verify-what-changed core behind Sidewatch's "Send to Agent" surface.
+What a change did, for the person reviewing it: line-pinned review notes, facts a change establishes (destructive SQL, dependencies, tests), and the callers and tests a touched symbol reaches.
 
-## Features
+## Modules
 
-- 📝 **Line-pinned comments** — `ReviewComment` carries a `file`, `line`, `severity`, and `note`
-- 🚦 **Severities** — `ReviewSeverity`: `must-fix`, `suggestion`, `question` (the raw value is the markdown label)
-- 📤 **Markdown emit** — `ReviewDraft.markdown()` groups by file, sorts by line, and indents multi-line notes so they stay inside their bullet
-- ✅ **Reviewed set** — `ReviewSession.toggle(_:)` / `markReviewed(_:_:)` / `reviewedCount(in:)` to walk a change set to completion (N of M)
-- 💾 **Per-repo persistence** — `ReviewSession.setRepo(_:)` scopes the reviewed set per repository; it survives relaunch via `UserDefaults`
-- 🧹 **Prune** — `ReviewSession.prune(to:)` drops reviewed entries no longer in the live change set
-- 🪶 **Zero dependencies** — Foundation only
-- 🍎 **Cross-platform** — iOS, macOS, tvOS, watchOS, visionOS
+Each module is its own library product: depend on the package, then only on the products you use.
 
-## Requirements
-
-- macOS 14+ (Foundation only; other Apple platforms at SwiftPM's default minimums)
-- Swift 6.2+ (Swift 6 language mode)
+| Module | What it is |
+|---|---|
+| [`ReviewKit`](Docs/Modules/ReviewKit.md) | A code-review pass over changed files: line-pinned comments as one Markdown block, and which files are marked reviewed. |
+| [`ChangeFacts`](Docs/Modules/ChangeFacts.md) | What a change DID, as facts a reviewer can hold against a brief — destructive SQL, dependencies, tests — never a judgement. |
+| [`BlastRadius`](Docs/Modules/BlastRadius.md) | For each symbol a diff touches, its callers and covering tests across the project. |
 
 ## Installation
-
-### Swift Package Manager
 
 ```swift
 dependencies: [
     .package(url: "https://github.com/Sidewatch/swift-review-kit.git", from: "0.1.0")
+],
+targets: [
+    .target(name: "MyApp", dependencies: [
+        .product(name: "ReviewKit", package: "swift-review-kit"),
+    ]),
 ]
 ```
 
-## Usage
+## Requirements
 
-### Composing review feedback
+- macOS 14+
+- Swift 6.2+ (Swift 6 language mode)
 
-```swift
-import ReviewKit
+## History
 
-ReviewDraft.shared.add(ReviewComment(file: "App.swift", line: 42,
-                                     severity: .mustFix, note: "Force-unwrap can crash here."))
-ReviewDraft.shared.add(ReviewComment(file: "App.swift", line: 12,
-                                     severity: .suggestion, note: "Extract this into a helper."))
+The modules were separate packages until 27 September 2026 (`swift-change-facts`, `swift-blast-radius`); their commits are kept here, so `git log --follow` traces any file back through them.
 
-print(ReviewDraft.shared.markdown())
-// ## Code review
-//
-// ### App.swift
-// - **[suggestion]** L12: Extract this into a helper.
-// - **[must-fix]** L42: Force-unwrap can crash here.
+## Licence
 
-ReviewDraft.shared.clear()
-```
-
-### Tracking reviewed files
-
-```swift
-import ReviewKit
-
-ReviewSession.shared.setRepo(URL(fileURLWithPath: "/path/to/repo"))
-ReviewSession.shared.toggle("App.swift")
-ReviewSession.shared.isReviewed("App.swift")            // true
-ReviewSession.shared.reviewedCount(in: ["App.swift"])   // 1
-
-// After the change set moves on, drop stale entries; then clear the session.
-ReviewSession.shared.prune(to: ["App.swift"])
-ReviewSession.shared.reset()
-```
-
-## For agents
-
-Read `CONTRIBUTING.md` first: the folder layout and the PR rules. `swift test` is the whole
-check, and a new test must fail before the change it covers. `CLAUDE.md` / `AGENTS.md` carry a
-module map.
-
-## License
-
-MIT
+MIT — see [LICENSE](LICENSE).

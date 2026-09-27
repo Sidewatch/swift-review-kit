@@ -23,7 +23,7 @@
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Sidewatch/swift-blast-radius.git", from: "0.1.0")
+    .package(url: "https://github.com/Sidewatch/swift-review-kit.git", from: "0.1.0")
 ]
 ```
 
