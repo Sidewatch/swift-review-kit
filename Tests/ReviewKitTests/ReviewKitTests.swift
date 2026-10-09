@@ -296,12 +296,12 @@ final class ReviewKitTests: XCTestCase {
         ReviewSession.shared.reset()
 
         ReviewSession.shared.markReviewed("a.swift")
-        var persisted = UserDefaults.standard.dictionary(forKey: "sidewatch.reviewSession") as? [String: [String]]
-        XCTAssertEqual(persisted?[repo.path], ["a.swift"])
+        var persisted = UserDefaults.standard.dictionary(forKey: "sidewatch.reviewSession") as? [String: [String: String]]
+        XCTAssertEqual(persisted?[repo.path], ["a.swift": ""])
 
-        // Emptying the set must delete the repo's key, not persist a dead `[]` entry.
+        // Emptying the set must delete the repo's key, not persist a dead `[:]` entry.
         ReviewSession.shared.reset()
-        persisted = UserDefaults.standard.dictionary(forKey: "sidewatch.reviewSession") as? [String: [String]]
+        persisted = UserDefaults.standard.dictionary(forKey: "sidewatch.reviewSession") as? [String: [String: String]]
         XCTAssertNil(persisted?[repo.path])
     }
 }

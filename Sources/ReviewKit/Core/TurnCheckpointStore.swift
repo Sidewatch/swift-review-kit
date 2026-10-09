@@ -13,8 +13,13 @@ import Foundation
 
 /// Per-repo record of turn checkpoints, persisted so a review survives relaunch.
 ///
+/// Every call names the repository it is about, because a session's checkpoints live in the
+/// repository the agent works in — a linked worktree, a second checkout — which need not be
+/// the one the host is showing. ``setRepo(_:)`` names a current repository for the calls that
+/// leave it out.
+///
 /// - Important: Checkpoints are **forward-only**. A turn that ran before the app was watching
-///   has no snapshot and can only ever be reviewed by inference; ``hasCheckpoint(forTurn:)``
+///   has no snapshot and can only ever be reviewed by inference; ``hasCheckpoint(forTurn:repo:)``
 ///   is what a UI should ask before claiming a diff is exact.
 ///
 /// - Note: Main-actor UI state, persisted synchronously to `UserDefaults.standard` under
@@ -29,7 +34,7 @@ public final class TurnCheckpointStore {
     private var byRepo: [String: [TurnCheckpoint]] = [:]
     private var repoKey = ""
 
-    /// Fired whenever the current repo's checkpoints change.
+    /// Fired whenever any repository's checkpoints change.
     public var onChange: (() -> Void)?
 
     /// How many checkpoints to keep per repo. Each pins a whole tree, so an unbounded
@@ -38,31 +43,88 @@ public final class TurnCheckpointStore {
 
     private init() { load() }
 
-    /// Points the store at a repository. Pass `nil` when no repo is open.
+    /// Names the current repository for the calls without a `repo`. Pass `nil` when no repo is open.
     public func setRepo(_ root: URL?) { repoKey = RepoKey.of(root) }
+
+    // MARK: - Reading
 
     /// The current repo's checkpoints, oldest first.
     public var checkpoints: [TurnCheckpoint] { byRepo[repoKey] ?? [] }
 
-    /// The checkpoint recorded for `id`, or `nil` when the turn predates the app watching.
-    public func checkpoint(forTurn id: String) -> TurnCheckpoint? {
-        checkpoints.first { $0.id == id }
-    }
+    /// `repo`'s checkpoints, oldest first.
+    public func checkpoints(repo: URL) -> [TurnCheckpoint] { byRepo[RepoKey.of(repo)] ?? [] }
 
-    /// Whether `id` has a snapshot — i.e. whether its diff can be exact.
+    /// The checkpoint recorded for `id` in the current repo, or `nil` when the turn predates the app watching.
+    public func checkpoint(forTurn id: String) -> TurnCheckpoint? { checkpoints.first { $0.id == id } }
+
+    /// The checkpoint recorded for `id` in `repo`, or `nil`.
+    public func checkpoint(forTurn id: String, repo: URL) -> TurnCheckpoint? { checkpoints(repo: repo).first { $0.id == id } }
+
+    /// Whether `id` has a snapshot in the current repo — i.e. whether its diff can be exact.
     public func hasCheckpoint(forTurn id: String) -> Bool { checkpoint(forTurn: id) != nil }
 
-    /// Records a checkpoint, replacing any existing one for the same turn.
+    /// Whether `id` has a snapshot in `repo`.
+    public func hasCheckpoint(forTurn id: String, repo: URL) -> Bool { checkpoint(forTurn: id, repo: repo) != nil }
+
+    /// The repository holding a checkpoint for `id`: the current repo when it has one, else the
+    /// first other repository that does. A turn's checkpoints live where its agent works, which
+    /// the host showing another checkout cannot know without asking.
+    public func repo(forTurn id: String) -> URL? {
+        if hasCheckpoint(forTurn: id), !repoKey.isEmpty { return URL(fileURLWithPath: repoKey, isDirectory: true) }
+        let key = byRepo.keys.sorted().first { key in !key.isEmpty && byRepo[key]?.contains { $0.id == id } == true }
+        return key.map { URL(fileURLWithPath: $0, isDirectory: true) }
+    }
+
+    /// The span to diff for `id` in the current repo — see ``diffRange(forTurn:repo:)``.
+    public func diffRange(forTurn id: String) -> (from: String, to: String?)? {
+        Self.diffRange(forTurn: id, in: checkpoints)
+    }
+
+    /// The span to diff for `id`: the turn's own commit, and the commit of the next turn of the
+    /// SAME session — or `nil` for that session's newest turn, meaning "compare against the live
+    /// working tree". Another session's turn in between never closes the span: two agents in one
+    /// repository would otherwise cut each other's turns short.
+    ///
+    /// - Parameters:
+    ///   - id: The turn to resolve.
+    ///   - repo: The repository the turn's checkpoints live in.
+    /// - Returns: The `from`/`to` pair, or `nil` when the turn has no checkpoint.
+    public func diffRange(forTurn id: String, repo: URL) -> (from: String, to: String?)? {
+        Self.diffRange(forTurn: id, in: checkpoints(repo: repo))
+    }
+
+    private static func diffRange(forTurn id: String, in list: [TurnCheckpoint]) -> (from: String, to: String?)? {
+        guard let index = list.firstIndex(where: { $0.id == id }) else { return nil }
+        let mine = list[index]
+        let next = list[(index + 1)...].first { $0.session == mine.session }?.commit
+        return (mine.commit, next)
+    }
+
+    // MARK: - Writing
+
+    /// Records a checkpoint in the current repo — see ``record(_:repo:)``.
+    @discardableResult
+    public func record(_ checkpoint: TurnCheckpoint) -> [String] {
+        guard !repoKey.isEmpty else { return [] }
+        return record(checkpoint, key: repoKey)
+    }
+
+    /// Records a checkpoint in `repo`, replacing any existing one for the same turn.
     ///
     /// Trims to ``historyLimit``, returning the ids dropped so the caller can release their
     /// git refs.
     ///
-    /// - Parameter checkpoint: The checkpoint to record.
+    /// - Parameters:
+    ///   - checkpoint: The checkpoint to record.
+    ///   - repo: The repository the snapshot was taken in.
     /// - Returns: The ids evicted by the trim, if any.
     @discardableResult
-    public func record(_ checkpoint: TurnCheckpoint) -> [String] {
-        guard !repoKey.isEmpty else { return [] }
-        var list = checkpoints.filter { $0.id != checkpoint.id }
+    public func record(_ checkpoint: TurnCheckpoint, repo: URL) -> [String] {
+        record(checkpoint, key: RepoKey.of(repo))
+    }
+
+    private func record(_ checkpoint: TurnCheckpoint, key: String) -> [String] {
+        var list = (byRepo[key] ?? []).filter { $0.id != checkpoint.id }
         list.append(checkpoint)
         list.sort { $0.capturedAt < $1.capturedAt }
 
@@ -70,29 +132,24 @@ public final class TurnCheckpointStore {
         let dropped = list.prefix(overflow).map(\.id)
         if overflow > 0 { list.removeFirst(overflow) }
 
-        byRepo[repoKey] = list
+        byRepo[key] = list
         save()
         onChange?()
         return Array(dropped)
     }
 
-    /// The span to diff for `id`: the turn's own commit, and the next turn's commit — or `nil`
-    /// for the newest turn, meaning "compare against the live working tree".
-    ///
-    /// - Parameter id: The turn to resolve.
-    /// - Returns: The `from`/`to` pair, or `nil` when the turn has no checkpoint.
-    public func diffRange(forTurn id: String) -> (from: String, to: String?)? {
-        let list = checkpoints
-        guard let index = list.firstIndex(where: { $0.id == id }) else { return nil }
-        let next = index + 1 < list.count ? list[index + 1].commit : nil
-        return (list[index].commit, next)
-    }
-
     /// Forgets every checkpoint for the current repo, returning the ids dropped.
     @discardableResult
-    public func reset() -> [String] {
-        let dropped = checkpoints.map(\.id)
-        byRepo.removeValue(forKey: repoKey)
+    public func reset() -> [String] { reset(key: repoKey) }
+
+    /// Forgets every checkpoint for `repo`, returning the ids dropped — for a repository whose
+    /// commits are gone (`.git` recreated, the folder re-cloned).
+    @discardableResult
+    public func reset(repo: URL) -> [String] { reset(key: RepoKey.of(repo)) }
+
+    private func reset(key: String) -> [String] {
+        let dropped = (byRepo[key] ?? []).map(\.id)
+        byRepo.removeValue(forKey: key)
         save()
         onChange?()
         return dropped
@@ -107,6 +164,7 @@ public final class TurnCheckpointStore {
                 [
                     "id": $0.id, "commit": $0.commit,
                     "at": $0.capturedAt.timeIntervalSince1970, "prompt": $0.prompt,
+                    "session": $0.session,
                 ] as [String: Any]
             }
         }
@@ -128,7 +186,8 @@ public final class TurnCheckpointStore {
                 return TurnCheckpoint(
                     id: id, commit: commit,
                     capturedAt: Date(timeIntervalSince1970: at),
-                    prompt: entry["prompt"] as? String ?? "")
+                    prompt: entry["prompt"] as? String ?? "",
+                    session: entry["session"] as? String ?? "")
             }
         }
     }

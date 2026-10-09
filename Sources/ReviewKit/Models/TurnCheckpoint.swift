@@ -13,10 +13,10 @@ import Foundation
 /// The snapshot taken when an agent turn began.
 ///
 /// One checkpoint marks the *start* of a turn; the turn's diff runs from it to the start of the
-/// next turn, or to the live working tree for the turn still in progress. That means one
-/// snapshot per turn rather than a pair, and no closing snapshot to miss if the app isn't
-/// watching when a turn ends.
-public struct TurnCheckpoint: Equatable {
+/// next turn of the same session, or to the live working tree for the turn still in progress.
+/// That means one snapshot per turn rather than a pair, and no closing snapshot to miss if the
+/// app isn't watching when a turn ends.
+public struct TurnCheckpoint: Equatable, Sendable {
 
     /// Stable identifier for the turn — also the last component of its git ref.
     public let id: String
@@ -30,6 +30,11 @@ public struct TurnCheckpoint: Equatable {
     /// The prompt that opened the turn, for labelling it in a picker.
     public let prompt: String
 
+    /// The session the turn belongs to (the agent and its transcript), so two agents working in
+    /// one repository never close each other's turns. Empty for a checkpoint recorded before
+    /// sessions were kept.
+    public let session: String
+
     /// Creates a checkpoint record.
     ///
     /// - Parameters:
@@ -37,10 +42,12 @@ public struct TurnCheckpoint: Equatable {
     ///   - commit: The commit captured when the turn began.
     ///   - capturedAt: When the snapshot was taken.
     ///   - prompt: The prompt that opened the turn.
-    public init(id: String, commit: String, capturedAt: Date, prompt: String) {
+    ///   - session: The agent and transcript the turn belongs to.
+    public init(id: String, commit: String, capturedAt: Date, prompt: String, session: String = "") {
         self.id = id
         self.commit = commit
         self.capturedAt = capturedAt
         self.prompt = prompt
+        self.session = session
     }
 }

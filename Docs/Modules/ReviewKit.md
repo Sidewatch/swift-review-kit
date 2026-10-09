@@ -8,8 +8,9 @@ A small model layer for a code-review pass over a set of changed files — colle
 - 🚦 **Severities** — `ReviewSeverity`: `must-fix`, `suggestion`, `question` (the raw value is the markdown label)
 - 📤 **Markdown emit** — `ReviewDraft.markdown()` groups by file, sorts by line, and indents multi-line notes so they stay inside their bullet
 - ✅ **Reviewed set** — `ReviewSession.toggle(_:)` / `markReviewed(_:_:)` / `reviewedCount(in:)` to walk a change set to completion (N of M)
-- 💾 **Per-repo persistence** — `ReviewSession.setRepo(_:)` scopes the reviewed set per repository; it survives relaunch via `UserDefaults`
-- 🧹 **Prune** — `ReviewSession.prune(to:)` drops reviewed entries no longer in the live change set
+- **Content stamps** — `markReviewed(_:stamp:)` / `isReviewed(_:stamp:)` / `toggle(_:stamp:)` / `reviewedCount(in:stamp:)` tie a mark to the content it was made against (the working-tree blob hash you compute): the agent editing the file again changes the stamp and the file is no longer reviewed. The unstamped calls are the stamped ones with a nil stamp, so a stamped mark never answers an unstamped question and an unstamped mark never answers a stamped one
+- 💾 **Per-repo persistence** — `ReviewSession.setRepo(_:)` scopes the reviewed set per repository; it survives relaunch via `UserDefaults`, stamps included
+- 🧹 **Prune** — `ReviewSession.prune(to:)` drops reviewed entries no longer in the live change set; an empty set is a no-op, since a snapshot with no changes at all is a stash or a checkout away from the branch, not a review outcome
 - 🪶 **Small** — Foundation plus swift-foundation-extensions (FoundationExtensions, ProcessRunner)
 - 🍎 **Cross-platform** — iOS, macOS, tvOS, watchOS, visionOS
 
@@ -62,8 +63,40 @@ ReviewSession.shared.reviewedCount(in: ["App.swift"])   // 1
 
 // After the change set moves on, drop stale entries; then clear the session.
 ReviewSession.shared.prune(to: ["App.swift"])
+ReviewSession.shared.prune(to: [])                      // no-op: a stash or branch hop, the marks stay
 ReviewSession.shared.reset()
+
+// Stamp a mark with the content it reviewed, and it answers only for that content.
+ReviewSession.shared.markReviewed("App.swift", stamp: blobHash)
+ReviewSession.shared.isReviewed("App.swift", stamp: blobHash)      // true
+ReviewSession.shared.isReviewed("App.swift", stamp: editedHash)    // false: the agent edited it again
+ReviewSession.shared.isReviewed("App.swift")                       // false: a stamped mark, an unstamped question
+ReviewSession.shared.reviewedCount(in: paths) { stampOf($0) }      // N of M, per path's stamp
 ```
+
+### Turn checkpoints
+
+```swift
+import ReviewKit
+
+// One snapshot per turn START, filed under the repository the agent works in — a linked
+// worktree or a second checkout, not necessarily the one on screen.
+let store = TurnCheckpointStore.shared
+store.record(
+    TurnCheckpoint(id: turn.id, commit: snapshotSHA, capturedAt: .now, prompt: turn.prompt,
+                   session: "Claude Code|/path/to/transcript.jsonl"),
+    repo: repoURL)
+store.hasCheckpoint(forTurn: turn.id, repo: repoURL)    // can this turn's diff be exact?
+store.diffRange(forTurn: turn.id, repo: repoURL)        // (from, to): `to` is the next checkpoint
+                                                        // of the SAME session, nil = working tree
+store.repo(forTurn: turn.id)                            // which repository holds it
+store.reset(repo: repoURL)                              // the repository's commits are gone
+store.setRepo(repoURL)                                  // names a current repo for the calls without one
+```
+
+Two agents in one repository interleave their turns; a span closes only at the next turn of its
+own session, so neither cuts the other short. `record` trims to `historyLimit` (50) per repo and
+returns the evicted ids so the caller can release their git refs.
 
 ## For agents
 

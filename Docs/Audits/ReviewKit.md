@@ -26,6 +26,33 @@ Nothing to fix. Checked: `ReviewSession`'s save/load round trip, `ReviewDraft`,
 `TurnCheckpointStore.record`'s pruning and its returned paths, `DiffLineLocator`'s hunk replay (a
 removed line maps to its OLD number), `DiffReviewMessage.format`, `PRReviewExporter`.
 
+## Reviewed marks — 9 Oct 2026
+
+Fixed, each pinned by a test that fails against the old code (`ReviewSessionStampTests`, over a
+throwaway `UserDefaults` suite through the new `ReviewSession(defaults:)` initializer):
+
+- **A file the agent edited again stayed "reviewed".** Marks were keyed by path alone. A mark now
+  carries an optional content stamp (`ReviewMark`), the working-tree blob hash the host computes:
+  `markReviewed(_:stamp:)`, `isReviewed(_:stamp:)`, `toggle(_:stamp:)`,
+  `reviewedCount(in:stamp:)`. A stored stamp matches only the same stamp; a mark without one
+  matches only a nil question; the unstamped API is the stamped one with a nil stamp. Pinned by
+  `testAMarkAnswersOnlyForTheStampItWasMadeWith`,
+  `testReMarkingWithANewStampReplacesTheOldOneAndFiresOnlyOnAChange`,
+  `testToggleWithAStampMarksAStaleFileRatherThanClearingIt`, `testReviewedCountTakesEachPathsStamp`.
+  Mutant: `isReviewed(_:stamp:)` answering true for any mark on the path — 12 failures.
+- **`prune(to: [])` deleted every mark for the repo.** An all-empty status snapshot is a `git
+  stash` or a checkout away from the branch, not a review outcome; the marks must be there when
+  the changes come back. The empty set is now a no-op; a non-empty set still drops absent paths.
+  Pinned by `testPruneToAnEmptySetKeepsEveryMark` and `testPruneToANonEmptySetStillDropsAbsentPaths`.
+  Mutant: the empty-set guard removed — 3 failures.
+- **Persistence** (`Support/ReviewMarkRecords`): repo key → path → stamp, an empty string for
+  no stamp (a property list holds no nil; a blob hash is never empty). The previous repo key →
+  [path] list is not migrated, pre-launch; it fails the read and the marks start empty
+  (`testTheOldPathListFormatIsNotRead`). Pinned by `testStampsSurviveARelaunch`: a second
+  session over the same defaults sees the stamps and the stored dictionary. Mutant: stamps
+  written as empty strings — 4 failures. `testSessionEmptyRepoEntriesAreRemovedFromPersistedStore`
+  reads the new shape.
+
 ## Known non-issues (do not "fix" these again)
 
 - None recorded.
@@ -34,3 +61,4 @@ removed line maps to its OLD number), `DiffReviewMessage.format`, `PRReviewExpor
 
 - 17 Sep 2026 — full audit (app + all 20 libraries), Claude with David.
 - 18 Sep 2026 — logic review (every source and test file, line by line), Claude with David.
+- 9 Oct 2026 — reviewed marks: content stamps, `prune(to: [])` a no-op, stored shape changed (above).

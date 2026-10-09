@@ -3,7 +3,7 @@
 //  ReviewKitTests
 //
 //  Tests for `TurnCheckpointStore`: one checkpoint per turn start, the 50-entry bound with
-//  evicted ids returned, persistence per repository, and reset.
+//  evicted ids returned, persistence per repository, per-session spans, and reset.
 //
 //  Created by David Sherlock on 7/25/26.
 //  Copyright © 2026 ArrayPress Limited. MIT licence.
@@ -14,29 +14,34 @@ import XCTest
 
 // The store is main-actor isolated; XCTest runs a @MainActor test class on the main queue.
 /// Tests for `TurnCheckpointStore`: one checkpoint per turn start, the 50-entry bound with
-/// evicted ids returned, persistence per repository, and reset.
+/// evicted ids returned, persistence per repository, per-session spans, and reset.
 @MainActor
 final class TurnCheckpointStoreTests: XCTestCase {
 
     private let store = TurnCheckpointStore.shared
+    private var repo = URL(fileURLWithPath: "/tmp/ckpt-tests/unset")
+    private var other = URL(fileURLWithPath: "/tmp/ckpt-tests/unset-other")
 
     override func setUp() {
         super.setUp()
-        // The store is a process-wide singleton, so each test gets its own repo key.
-        store.setRepo(URL(fileURLWithPath: "/tmp/ckpt-tests/\(UUID().uuidString)"))
+        // The store is a process-wide singleton, so each test gets its own repo keys.
+        repo = URL(fileURLWithPath: "/tmp/ckpt-tests/\(UUID().uuidString)")
+        other = URL(fileURLWithPath: "/tmp/ckpt-tests/other-\(UUID().uuidString)")
+        store.setRepo(repo)
     }
 
     override func tearDown() {
         store.reset()
+        store.reset(repo: other)
         store.setRepo(nil)
         super.tearDown()
     }
 
-    private func checkpoint(_ id: String, _ commit: String, secondsFromNow: TimeInterval) -> TurnCheckpoint {
+    private func checkpoint(_ id: String, _ commit: String, secondsFromNow: TimeInterval, session: String = "") -> TurnCheckpoint {
         TurnCheckpoint(
             id: id, commit: commit,
             capturedAt: Date(timeIntervalSince1970: 1_000_000 + secondsFromNow),
-            prompt: "prompt \(id)")
+            prompt: "prompt \(id)", session: session)
     }
 
     func testRecordAndLookup() {
@@ -82,6 +87,67 @@ final class TurnCheckpointStoreTests: XCTestCase {
         XCTAssertNil(store.diffRange(forTurn: "ancient"))
     }
 
+    func testDiffRangeClosesAtTheNextTurnOfTheSameSession() {
+        // Two agents in one repository interleave: A1, then B1, then A2. A1's span must run to
+        // A2, not be cut short at B1; B1 is its session's newest turn and runs to the tree.
+        store.record(checkpoint("a1", "c1", secondsFromNow: 0, session: "Claude Code|/s/a.jsonl"))
+        store.record(checkpoint("b1", "c2", secondsFromNow: 10, session: "Codex|/s/b.jsonl"))
+        store.record(checkpoint("a2", "c3", secondsFromNow: 20, session: "Claude Code|/s/a.jsonl"))
+        XCTAssertEqual(store.diffRange(forTurn: "a1")?.to, "c3")
+        XCTAssertNil(store.diffRange(forTurn: "b1")?.to)
+        XCTAssertNil(store.diffRange(forTurn: "a2")?.to)
+    }
+
+    func testCheckpointsWithoutASessionStillChain() {
+        // Entries recorded before sessions were kept carry an empty session and close each other.
+        store.record(checkpoint("t1", "aaa", secondsFromNow: 0))
+        store.record(checkpoint("t2", "bbb", secondsFromNow: 10))
+        XCTAssertEqual(store.diffRange(forTurn: "t1")?.to, "bbb")
+    }
+
+    func testEveryCallCanNameItsRepository() {
+        // The capture path records into the session's OWN repository, which need not be the
+        // current one; the current repo's list stays untouched.
+        store.record(checkpoint("w1", "aaa", secondsFromNow: 0), repo: other)
+        store.record(checkpoint("w2", "bbb", secondsFromNow: 10), repo: other)
+        XCTAssertTrue(store.checkpoints.isEmpty)
+        XCTAssertFalse(store.hasCheckpoint(forTurn: "w1"))
+        XCTAssertTrue(store.hasCheckpoint(forTurn: "w1", repo: other))
+        XCTAssertEqual(store.checkpoints(repo: other).map(\.id), ["w1", "w2"])
+        XCTAssertEqual(store.checkpoint(forTurn: "w2", repo: other)?.commit, "bbb")
+        XCTAssertEqual(store.diffRange(forTurn: "w1", repo: other)?.to, "bbb")
+        XCTAssertNil(store.diffRange(forTurn: "w1"))
+    }
+
+    func testRepoForTurnFindsTheRepositoryHoldingIt() {
+        store.record(checkpoint("here", "aaa", secondsFromNow: 0))
+        store.record(checkpoint("there", "bbb", secondsFromNow: 0), repo: other)
+        XCTAssertEqual(store.repo(forTurn: "here")?.path, repo.path)
+        XCTAssertEqual(store.repo(forTurn: "there")?.path, other.path)
+        XCTAssertNil(store.repo(forTurn: "nowhere"))
+    }
+
+    func testRepoForTurnPrefersTheCurrentRepository() {
+        store.record(checkpoint("both", "aaa", secondsFromNow: 0))
+        store.record(checkpoint("both", "bbb", secondsFromNow: 0), repo: other)
+        XCTAssertEqual(store.repo(forTurn: "both")?.path, repo.path)
+    }
+
+    func testResetOfOneRepositoryLeavesTheOthers() {
+        store.record(checkpoint("t1", "aaa", secondsFromNow: 0))
+        store.record(checkpoint("w1", "bbb", secondsFromNow: 0), repo: other)
+        XCTAssertEqual(store.reset(repo: other), ["w1"])
+        XCTAssertTrue(store.checkpoints(repo: other).isEmpty)
+        XCTAssertTrue(store.hasCheckpoint(forTurn: "t1"))
+    }
+
+    func testTheSessionIsPersisted() {
+        store.record(checkpoint("t1", "aaa", secondsFromNow: 0, session: "Claude Code|/s/a.jsonl"))
+        let flat = UserDefaults.standard.dictionary(forKey: "sidewatch.turnCheckpoints") as? [String: [[String: Any]]]
+        let entry = flat?[RepoKey.of(repo)]?.first
+        XCTAssertEqual(entry?["session"] as? String, "Claude Code|/s/a.jsonl")
+    }
+
     func testHistoryLimitEvictsOldestAndReportsWhatItDropped() {
         let limit = TurnCheckpointStore.historyLimit
         for i in 0..<limit {
@@ -100,15 +166,17 @@ final class TurnCheckpointStoreTests: XCTestCase {
 
     func testCheckpointsAreScopedPerRepo() {
         store.record(checkpoint("t1", "aaa", secondsFromNow: 0))
-        store.setRepo(URL(fileURLWithPath: "/tmp/ckpt-tests/other-\(UUID().uuidString)"))
+        store.setRepo(other)
         XCTAssertTrue(store.checkpoints.isEmpty)
         XCTAssertFalse(store.hasCheckpoint(forTurn: "t1"))
+        store.setRepo(repo)
     }
 
     func testRecordWithNoRepoIsIgnored() {
         store.setRepo(nil)
         store.record(checkpoint("t1", "aaa", secondsFromNow: 0))
         XCTAssertTrue(store.checkpoints.isEmpty)
+        store.setRepo(repo)
     }
 
     func testResetReturnsTheIdsItDropped() {

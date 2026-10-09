@@ -52,6 +52,21 @@ print(ReviewDraft.shared.markdown())
 // - **[must-fix]** L42: Force-unwrap can crash here.
 
 ReviewDraft.shared.clear()
+
+// Which files are reviewed, per repository, as the content they were reviewed at.
+ReviewSession.shared.setRepo(repoURL)
+ReviewSession.shared.markReviewed("App.swift", stamp: blobHash)
+ReviewSession.shared.isReviewed("App.swift", stamp: editedHash)   // false once the agent edits it again
+
+// Which commit opened which agent turn, per repository, so a turn's diff can be exact.
+// Every call names the repository: a session's checkpoints live where its agent works.
+TurnCheckpointStore.shared.record(
+    TurnCheckpoint(id: turn.id, commit: snapshot, capturedAt: .now, prompt: turn.prompt,
+                   session: "Claude Code|/path/to/transcript.jsonl"), repo: worktreeURL)
+TurnCheckpointStore.shared.diffRange(forTurn: turn.id, repo: worktreeURL)
+// (from: snapshot, to: the next checkpoint of the SAME session, or nil for the working tree)
+TurnCheckpointStore.shared.repo(forTurn: turn.id)                   // the repository holding it
+TurnCheckpointStore.shared.reset(repo: worktreeURL)                 // its commits are gone
 ```
 
 ### ChangeFacts
