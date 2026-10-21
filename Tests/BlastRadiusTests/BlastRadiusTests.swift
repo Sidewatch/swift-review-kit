@@ -62,6 +62,16 @@ final class BlastRadiusTests: XCTestCase {
         XCTAssertTrue(impact.callers.allSatisfy { !$0.isTest })
     }
 
+    func testARootThatIsALinkIsSearchedToo() throws {
+        let real = try makeProject()
+        let link = real.deletingLastPathComponent().appendingPathComponent("blast-link-\(UUID().uuidString)")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+        scratch.append(link)
+        let impact = try XCTUnwrap(BlastRadius.references(to: "foo", root: link))
+        XCTAssertTrue(impact.callers.contains { $0.file == "caller.swift" }, "callers: \(impact.callers.map(\.file))")
+        XCTAssertTrue(impact.tests.contains { $0.file == "MyTests.swift" })
+    }
+
     func testCRLFFilesReportTheLineWithoutItsCarriageReturn() throws {
         // A Windows file ends every line in CRLF. The scan splits on `\n`, so trimming must
         // include CR (`.whitespaces` does not), or every location's text carries a trailing `\r`.

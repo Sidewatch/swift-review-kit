@@ -29,7 +29,10 @@ let package = Package(
                 .product(name: "FoundationExtensions", package: "swift-foundation-extensions"),
             ],
             resources: [.process("Localizable.xcstrings")], swiftSettings: [.swiftLanguageMode(.v6)]),
-        .target(name: "BlastRadius", swiftSettings: [.swiftLanguageMode(.v6)]),
+        .target(
+            name: "BlastRadius",
+            dependencies: [.product(name: "FoundationExtensions", package: "swift-foundation-extensions")],
+            swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(name: "ReviewKitTests", dependencies: ["ReviewKit"]),
         .testTarget(name: "ChangeFactsTests", dependencies: ["ChangeFacts"], resources: [.copy("Fixtures")]),
         .testTarget(name: "BlastRadiusTests", dependencies: ["BlastRadius"]),

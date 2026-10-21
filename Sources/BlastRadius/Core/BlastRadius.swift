@@ -11,6 +11,7 @@
 //
 
 import Foundation
+import FoundationExtensions
 
 /// Finds the project-wide impact of the symbols touched by a change.
 ///
@@ -213,11 +214,11 @@ public enum BlastRadius {
     /// and capping the walk at 6000 files.
     private static func sourceFiles(_ root: URL) -> [URL] {
         var out: [URL] = []
-        guard let en = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil) else { return [] }
-        for case let url as URL in en {
-            if skip.contains(url.lastPathComponent) { en.skipDescendants(); continue }
+        // `walk`: the root may itself be a symbolic link, which `enumerator(at:)` lists nothing under.
+        FileManager.default.walk(root) { url in
+            if skip.contains(url.lastPathComponent) { return .skipDescendants }
             if exts.contains(url.pathExtension.lowercased()) { out.append(url) }
-            if out.count > 6000 { break }
+            return out.count > 6000 ? .stop : .next
         }
         return out
     }
