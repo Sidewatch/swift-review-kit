@@ -23,7 +23,11 @@ let package = Package(
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(
-            name: "ChangeFacts", dependencies: [.product(name: "SQLiteReader", package: "swift-sqlite-reader")],
+            name: "ChangeFacts",
+            dependencies: [
+                .product(name: "SQLiteReader", package: "swift-sqlite-reader"),
+                .product(name: "FoundationExtensions", package: "swift-foundation-extensions"),
+            ],
             resources: [.process("Localizable.xcstrings")], swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(name: "BlastRadius", swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(name: "ReviewKitTests", dependencies: ["ReviewKit"]),

@@ -10,6 +10,7 @@
 //
 
 import Foundation
+import FoundationExtensions
 
 /// The database commands a shell line shows were RUN (`psql -c "DELETE …"`, `prisma migrate
 /// reset`, `rails db:drop`) as facts with a severity: what the SQL they carry is
@@ -331,10 +332,6 @@ public enum DatabaseCommands {
         }
     }
 
-    /// The first line of `s`, trimmed and cut to 120 characters.
-    static func firstLine(_ s: String) -> String {
-        let line = s.split(whereSeparator: \.isNewline).first.map(String.init) ?? s
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        return trimmed.count > 120 ? String(trimmed.prefix(119)) + "…" : trimmed
-    }
+    /// The first line of `s` that holds anything, trimmed and cut to 120 characters.
+    static func firstLine(_ s: String) -> String { s.firstLine.clipped(to: 120) }
 }
