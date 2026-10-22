@@ -1046,10 +1046,10 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%#@files@, %#@tests@"
+            "value" : "%#@f@, %#@t@"
           },
           "substitutions" : {
-            "files" : {
+            "f" : {
               "argNum" : 1,
               "formatSpecifier" : "lld",
               "variations" : {
@@ -1069,7 +1069,7 @@
                 }
               }
             },
-            "tests" : {
+            "t" : {
               "argNum" : 2,
               "formatSpecifier" : "lld",
               "variations" : {
