@@ -10,10 +10,10 @@ What a change did, for the person reviewing it: line-pinned review notes, facts 
 ## ReviewKit — `Sources/ReviewKit`
 
 ### Module map
-- `Core/` — the engine: ReviewDraft, ReviewSession (reviewed marks with content stamps, per repo), TurnCheckpointStore, DiffLineLocator (`locate` one rendered line, `locateAll` every line in one pass: the numbers a diff view shows)
+- `Core/` — the engine: ReviewDraft, ReviewSession (reviewed marks with content stamps, per repo), TurnCheckpointStore, TurnAttribution (each line's turn from the turns' snapshots; another session's turn named only while it kept taking turns), DiffLineLocator (`locate` one rendered line, `locateAll` every line in one pass: the numbers a diff view shows)
 - `Enums/` — enums with no behaviour beyond their cases and labels: ReviewSeverity
 - `Models/` — value types — the shape of a thing, nothing else: ReviewComment, DiffReviewComment, TurnCheckpoint, ReviewMark
-- `Support/` — pure helpers: RepoKey, DiffReviewMessage, ReviewMarkRecords (the stored shape of the marks, both ways)
+- `Support/` — pure helpers: RepoKey, DiffReviewMessage, ReviewMarkRecords (the stored shape of the marks, both ways), LineOrigins (each line's first version over any sequence of texts; stdlib `difference(from:)`, matched by content past `diffBudget` because a rewrite is quadratic)
 
 ## ChangeFacts — `Sources/ChangeFacts`
 

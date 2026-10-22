@@ -67,6 +67,13 @@ TurnCheckpointStore.shared.diffRange(forTurn: turn.id, repo: worktreeURL)
 // (from: snapshot, to: the next checkpoint of the SAME session, or nil for the working tree)
 TurnCheckpointStore.shared.repo(forTurn: turn.id)                   // the repository holding it
 TurnCheckpointStore.shared.reset(repo: worktreeURL)                 // its commits are gone
+
+// Which turn each line of a file appeared during: the file at each checkpoint (nil where it
+// did not exist), oldest first, then the file now. A line older than every snapshot has none.
+let checkpoints = TurnCheckpointStore.shared.checkpoints(repo: worktreeURL)
+let lists = TurnAttribution.turns(forLinesOf: currentText, snapshots: textAtEachCheckpoint, checkpoints: checkpoints)
+lists[41].first?.prompt                                             // line 42's turn
+LineOrigins.origins(of: ["a", "a\nb", "a\nb\nc"])                // [0, 1, 2]: the version each line arrived in
 ```
 
 ### ChangeFacts

@@ -92,6 +92,12 @@ store.diffRange(forTurn: turn.id, repo: repoURL)        // (from, to): `to` is t
 store.repo(forTurn: turn.id)                            // which repository holds it
 store.reset(repo: repoURL)                              // the repository's commits are gone
 store.setRepo(repoURL)                                  // names a current repo for the calls without one
+
+// Which turn each line appeared during. The snapshots are a timeline, not an author: the
+// person's own edits in a turn's span count toward it. Another agent's turn is named beside
+// it only while that agent kept taking turns after the span opened.
+TurnAttribution.turns(forLinesOf: now, snapshots: fileAtEachCheckpoint, checkpoints: store.checkpoints(repo: repoURL))
+LineOrigins.origins(of: versions)   // each line's first version; a rewrite past `diffBudget` is matched by content
 ```
 
 Two agents in one repository interleave their turns; a span closes only at the next turn of its

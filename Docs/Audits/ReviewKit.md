@@ -62,3 +62,7 @@ throwaway `UserDefaults` suite through the new `ReviewSession(defaults:)` initia
 - 17 Sep 2026 — full audit (app + all 20 libraries), Claude with David.
 - 18 Sep 2026 — logic review (every source and test file, line by line), Claude with David.
 - 9 Oct 2026 — reviewed marks: content stamps, `prune(to: [])` a no-op, stored shape changed (above).
+- 23 Oct 2026 — `LineOrigins` + `TurnAttribution` (18 tests, 10 mutants each failing: inserted lines,
+  removed-line skip, the diff budget, content reuse, the unshared count, the line cap, finished and
+  earliest sessions, pre-watch lines, the own session beside). A whole-file rewrite measured 1.75 s
+  (10k lines) / 6.9 s (20k) per step through the line diff; past the budget it is matched by content.
