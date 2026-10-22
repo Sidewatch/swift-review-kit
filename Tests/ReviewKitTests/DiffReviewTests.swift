@@ -37,6 +37,23 @@ final class DiffReviewTests: XCTestCase {
         XCTAssertEqual(DiffLineLocator.visibleLines(in: ["Binary files a and b differ"]).map(\.text), ["Binary files a and b differ"])
     }
 
+    func testLocateAllNumbersEveryVisibleLineInOnePass() {
+        let all = DiffLineLocator.locateAll(chunk: chunk)
+        XCTAssertEqual(all.count, DiffLineLocator.visibleLines(in: chunk).count, "one entry per rendered line")
+        XCTAssertEqual(all, all.indices.map { DiffLineLocator.locate(chunk: chunk, visibleIndex: $0) }, "the same answers as locate")
+        // A second hunk restarts both counters from its header; a removed line takes the old side's
+        // number and does not move the new side's; the end-of-file marker and a hunk header have none.
+        let two = [
+            "diff --git a/f b/f", "--- a/f", "+++ b/f",
+            "@@ -1,2 +1,2 @@", " keep", "-old", "+new",
+            "@@ -40,3 +40,2 @@", " a", "-b", " c", "\\ No newline at end of file",
+        ]
+        XCTAssertEqual(
+            DiffLineLocator.locateAll(chunk: two).map { $0.map { "\($0.side)\($0.line)" } ?? "-" },
+            ["-", " 1", "-2", "+2", "-", " 40", "-41", " 41", "-"])
+        XCTAssertEqual(DiffLineLocator.locateAll(chunk: ["Binary files a and b differ"]).count, 1, "a binary note is a line with no number")
+    }
+
     func testLocateMapsEveryKindOfLineToItsFileLine() {
         XCTAssertNil(DiffLineLocator.locate(chunk: chunk, visibleIndex: 0), "a hunk header has no file line")
         XCTAssertEqual(

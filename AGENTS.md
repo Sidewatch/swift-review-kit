@@ -10,7 +10,7 @@ What a change did, for the person reviewing it: line-pinned review notes, facts 
 ## ReviewKit — `Sources/ReviewKit`
 
 ### Module map
-- `Core/` — the engine: ReviewDraft, ReviewSession (reviewed marks with content stamps, per repo), TurnCheckpointStore, DiffLineLocator
+- `Core/` — the engine: ReviewDraft, ReviewSession (reviewed marks with content stamps, per repo), TurnCheckpointStore, DiffLineLocator (`locate` one rendered line, `locateAll` every line in one pass: the numbers a diff view shows)
 - `Enums/` — enums with no behaviour beyond their cases and labels: ReviewSeverity
 - `Models/` — value types — the shape of a thing, nothing else: ReviewComment, DiffReviewComment, TurnCheckpoint, ReviewMark
 - `Support/` — pure helpers: RepoKey, DiffReviewMessage, ReviewMarkRecords (the stored shape of the marks, both ways)

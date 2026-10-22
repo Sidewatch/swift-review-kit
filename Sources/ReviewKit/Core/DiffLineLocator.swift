@@ -46,34 +46,45 @@ public enum DiffLineLocator {
     /// The file line behind the `visibleIndex`-th rendered diff line (0-based, banner excluded).
     /// Nil for hunk headers, binary notes and "\ No newline" markers.
     public static func locate(chunk: [String], visibleIndex: Int) -> Located? {
-        let visible = visibleLines(in: chunk)
-        guard visible.indices.contains(visibleIndex) else { return nil }
-        let targetChunkIndex = visible[visibleIndex].index
-        var old = 0, new = 0
-        for (i, raw) in chunk.enumerated() {
+        let all = locateAll(chunk: chunk)
+        return all.indices.contains(visibleIndex) ? all[visibleIndex] : nil
+    }
+
+    /// Every rendered diff line's file line in one pass, aligned with ``visibleLines(in:)``: the
+    /// new file's line for an added or context line, the old file's for a removed one, nil for a
+    /// hunk header, a binary note or a "\ No newline" marker. What a diff view numbers its
+    /// lines with.
+    public static func locateAll(chunk: [String]) -> [Located?] {
+        var out: [Located?] = []
+        var old = 0, new = 0, inHunk = false
+        for raw in chunk {
             if raw.hasPrefix("@@") {
                 // @@ -a,b +c,d @@ — counters start at a and c; the header itself has no line.
                 let parts = raw.split(separator: " ")
                 func start(_ token: Substring) -> Int { Int(token.dropFirst().split(separator: ",").first ?? "") ?? 1 }
                 if parts.count >= 3 { old = start(parts[1]); new = start(parts[2]) }
-                if i == targetChunkIndex { return nil }
+                inHunk = true
+                out.append(nil)
                 continue
             }
-            if i == targetChunkIndex {
-                if raw.hasPrefix("+") { return Located(line: new, side: "+", text: String(raw.dropFirst())) }
-                if raw.hasPrefix("-") { return Located(line: old, side: "-", text: String(raw.dropFirst())) }
-                if raw.hasPrefix("\\") || raw.hasPrefix("Binary files") { return nil }
-                return Located(line: new, side: " ", text: raw.hasPrefix(" ") ? String(raw.dropFirst()) : raw)
+            guard inHunk else {
+                if raw.hasPrefix("Binary files") { out.append(nil) }
+                continue
             }
             if raw.hasPrefix("+") {
+                out.append(Located(line: new, side: "+", text: String(raw.dropFirst())))
                 new += 1
             } else if raw.hasPrefix("-") {
+                out.append(Located(line: old, side: "-", text: String(raw.dropFirst())))
                 old += 1
-            } else if raw.hasPrefix("\\") {
-            } else if i > 0 {
-                old += 1; new += 1
-            }  // context (only meaningful inside a hunk)
+            } else if raw.hasPrefix("\\") || raw.hasPrefix("Binary files") {
+                out.append(nil)
+            } else {
+                out.append(Located(line: new, side: " ", text: raw.hasPrefix(" ") ? String(raw.dropFirst()) : raw))
+                old += 1
+                new += 1
+            }
         }
-        return nil
+        return out
     }
 }
