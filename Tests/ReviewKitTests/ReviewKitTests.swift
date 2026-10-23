@@ -195,112 +195,102 @@ final class ReviewKitTests: XCTestCase {
 
     func testSessionToggleAndIsReviewed() {
         let repo = URL(fileURLWithPath: "/tmp/review-kit-tests/\(UUID().uuidString)")
-        ReviewSession.shared.setRepo(repo)
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repo)
 
-        XCTAssertFalse(ReviewSession.shared.isReviewed("App.swift"))
-        ReviewSession.shared.toggle("App.swift")
-        XCTAssertTrue(ReviewSession.shared.isReviewed("App.swift"))
-        ReviewSession.shared.toggle("App.swift")
-        XCTAssertFalse(ReviewSession.shared.isReviewed("App.swift"))
+        XCTAssertFalse(ReviewSession.shared.isReviewed("App.swift", repo: repo))
+        ReviewSession.shared.toggle("App.swift", repo: repo)
+        XCTAssertTrue(ReviewSession.shared.isReviewed("App.swift", repo: repo))
+        ReviewSession.shared.toggle("App.swift", repo: repo)
+        XCTAssertFalse(ReviewSession.shared.isReviewed("App.swift", repo: repo))
 
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repo)
     }
 
     func testSessionIsScopedPerRepo() {
         let repoA = URL(fileURLWithPath: "/tmp/review-kit-tests/\(UUID().uuidString)")
         let repoB = URL(fileURLWithPath: "/tmp/review-kit-tests/\(UUID().uuidString)")
 
-        ReviewSession.shared.setRepo(repoA)
-        ReviewSession.shared.toggle("Shared.swift")
-        XCTAssertTrue(ReviewSession.shared.isReviewed("Shared.swift"))
+        ReviewSession.shared.toggle("Shared.swift", repo: repoA)
+        XCTAssertTrue(ReviewSession.shared.isReviewed("Shared.swift", repo: repoA))
 
         // A different repo doesn't see repoA's reviewed files.
-        ReviewSession.shared.setRepo(repoB)
-        XCTAssertFalse(ReviewSession.shared.isReviewed("Shared.swift"))
+        XCTAssertFalse(ReviewSession.shared.isReviewed("Shared.swift", repo: repoB))
 
         // Back to repoA, the state is intact.
-        ReviewSession.shared.setRepo(repoA)
-        XCTAssertTrue(ReviewSession.shared.isReviewed("Shared.swift"))
+        XCTAssertTrue(ReviewSession.shared.isReviewed("Shared.swift", repo: repoA))
 
-        ReviewSession.shared.reset()
-        ReviewSession.shared.setRepo(repoB)
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repoA)
+        ReviewSession.shared.reset(repo: repoB)
     }
 
     func testSessionReviewedCountAndReset() {
         let repo = URL(fileURLWithPath: "/tmp/review-kit-tests/\(UUID().uuidString)")
-        ReviewSession.shared.setRepo(repo)
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repo)
 
-        ReviewSession.shared.markReviewed("a.swift")
-        ReviewSession.shared.markReviewed("b.swift")
-        XCTAssertEqual(ReviewSession.shared.reviewedCount(in: ["a.swift", "b.swift", "c.swift"]), 2)
+        ReviewSession.shared.markReviewed("a.swift", repo: repo)
+        ReviewSession.shared.markReviewed("b.swift", repo: repo)
+        XCTAssertEqual(ReviewSession.shared.reviewedCount(in: ["a.swift", "b.swift", "c.swift"], repo: repo), 2)
 
-        ReviewSession.shared.reset()
-        XCTAssertEqual(ReviewSession.shared.reviewedCount(in: ["a.swift", "b.swift"]), 0)
+        ReviewSession.shared.reset(repo: repo)
+        XCTAssertEqual(ReviewSession.shared.reviewedCount(in: ["a.swift", "b.swift"], repo: repo), 0)
     }
 
     func testSessionMarkReviewedOffAndOnFiresOnChangeOnlyOnChange() {
         let repo = URL(fileURLWithPath: "/tmp/review-kit-tests/\(UUID().uuidString)")
-        ReviewSession.shared.setRepo(repo)
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repo)
 
         var fired = 0
         ReviewSession.shared.onChange = { fired += 1 }
-        ReviewSession.shared.markReviewed("a.swift", true)  // change → fires
-        ReviewSession.shared.markReviewed("a.swift", true)  // no change → silent
-        ReviewSession.shared.markReviewed("a.swift", false)  // change → fires
+        ReviewSession.shared.markReviewed("a.swift", true, repo: repo)  // change → fires
+        ReviewSession.shared.markReviewed("a.swift", true, repo: repo)  // no change → silent
+        ReviewSession.shared.markReviewed("a.swift", false, repo: repo)  // change → fires
         XCTAssertEqual(fired, 2)
 
         ReviewSession.shared.onChange = nil
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repo)
     }
 
     func testSessionPruneDropsMissingPaths() {
         let repo = URL(fileURLWithPath: "/tmp/review-kit-tests/\(UUID().uuidString)")
-        ReviewSession.shared.setRepo(repo)
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repo)
 
-        ReviewSession.shared.markReviewed("keep.swift")
-        ReviewSession.shared.markReviewed("gone.swift")
-        ReviewSession.shared.prune(to: ["keep.swift"])
-        XCTAssertTrue(ReviewSession.shared.isReviewed("keep.swift"))
-        XCTAssertFalse(ReviewSession.shared.isReviewed("gone.swift"))
+        ReviewSession.shared.markReviewed("keep.swift", repo: repo)
+        ReviewSession.shared.markReviewed("gone.swift", repo: repo)
+        ReviewSession.shared.prune(to: ["keep.swift"], repo: repo)
+        XCTAssertTrue(ReviewSession.shared.isReviewed("keep.swift", repo: repo))
+        XCTAssertFalse(ReviewSession.shared.isReviewed("gone.swift", repo: repo))
 
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repo)
     }
 
     func testSessionPruneFiresOnChangeOnlyOnChange() {
         let repo = URL(fileURLWithPath: "/tmp/review-kit-tests/\(UUID().uuidString)")
-        ReviewSession.shared.setRepo(repo)
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repo)
 
-        ReviewSession.shared.markReviewed("keep.swift")
-        ReviewSession.shared.markReviewed("gone.swift")
+        ReviewSession.shared.markReviewed("keep.swift", repo: repo)
+        ReviewSession.shared.markReviewed("gone.swift", repo: repo)
 
         var fired = 0
         ReviewSession.shared.onChange = { fired += 1 }
-        ReviewSession.shared.prune(to: ["keep.swift", "gone.swift"])  // nothing dropped → silent
+        ReviewSession.shared.prune(to: ["keep.swift", "gone.swift"], repo: repo)  // nothing dropped → silent
         XCTAssertEqual(fired, 0)
-        ReviewSession.shared.prune(to: ["keep.swift"])  // entry dropped → fires
+        ReviewSession.shared.prune(to: ["keep.swift"], repo: repo)  // entry dropped → fires
         XCTAssertEqual(fired, 1)
 
         ReviewSession.shared.onChange = nil
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repo)
     }
 
     func testSessionEmptyRepoEntriesAreRemovedFromPersistedStore() {
         let repo = URL(fileURLWithPath: "/tmp/review-kit-tests/\(UUID().uuidString)")
-        ReviewSession.shared.setRepo(repo)
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repo)
 
-        ReviewSession.shared.markReviewed("a.swift")
+        ReviewSession.shared.markReviewed("a.swift", repo: repo)
         var persisted = UserDefaults.standard.dictionary(forKey: "sidewatch.reviewSession") as? [String: [String: String]]
         XCTAssertEqual(persisted?[repo.path], ["a.swift": ""])
 
         // Emptying the set must delete the repo's key, not persist a dead `[:]` entry.
-        ReviewSession.shared.reset()
+        ReviewSession.shared.reset(repo: repo)
         persisted = UserDefaults.standard.dictionary(forKey: "sidewatch.reviewSession") as? [String: [String: String]]
         XCTAssertNil(persisted?[repo.path])
     }

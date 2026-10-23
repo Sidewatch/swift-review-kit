@@ -54,9 +54,9 @@ print(ReviewDraft.shared.markdown())
 ReviewDraft.shared.clear()
 
 // Which files are reviewed, per repository, as the content they were reviewed at.
-ReviewSession.shared.setRepo(repoURL)
-ReviewSession.shared.markReviewed("App.swift", stamp: blobHash)
-ReviewSession.shared.isReviewed("App.swift", stamp: editedHash)   // false once the agent edits it again
+// Every call names its repository — two windows may show two at once; there is no "current" one.
+ReviewSession.shared.markReviewed("App.swift", stamp: blobHash, repo: repoURL)
+ReviewSession.shared.isReviewed("App.swift", stamp: editedHash, repo: repoURL)   // false once the agent edits it again
 
 // Which commit opened which agent turn, per repository, so a turn's diff can be exact.
 // Every call names the repository: a session's checkpoints live where its agent works.

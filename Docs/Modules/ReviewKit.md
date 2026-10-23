@@ -9,7 +9,7 @@ A small model layer for a code-review pass over a set of changed files — colle
 - 📤 **Markdown emit** — `ReviewDraft.markdown()` groups by file, sorts by line, and indents multi-line notes so they stay inside their bullet
 - ✅ **Reviewed set** — `ReviewSession.toggle(_:)` / `markReviewed(_:_:)` / `reviewedCount(in:)` to walk a change set to completion (N of M)
 - **Content stamps** — `markReviewed(_:stamp:)` / `isReviewed(_:stamp:)` / `toggle(_:stamp:)` / `reviewedCount(in:stamp:)` tie a mark to the content it was made against (the working-tree blob hash you compute): the agent editing the file again changes the stamp and the file is no longer reviewed. The unstamped calls are the stamped ones with a nil stamp, so a stamped mark never answers an unstamped question and an unstamped mark never answers a stamped one
-- 💾 **Per-repo persistence** — `ReviewSession.setRepo(_:)` scopes the reviewed set per repository; it survives relaunch via `UserDefaults`, stamps included
+- 💾 **Per-repo persistence** — every `ReviewSession` call names its repository (two windows may show two at once); it survives relaunch via `UserDefaults`, stamps included
 - 🧹 **Prune** — `ReviewSession.prune(to:)` drops reviewed entries no longer in the live change set; an empty set is a no-op, since a snapshot with no changes at all is a stash or a checkout away from the branch, not a review outcome
 - 🪶 **Small** — Foundation plus swift-foundation-extensions (FoundationExtensions, ProcessRunner)
 - 🍎 **Cross-platform** — iOS, macOS, tvOS, watchOS, visionOS
@@ -56,22 +56,22 @@ ReviewDraft.shared.clear()
 ```swift
 import ReviewKit
 
-ReviewSession.shared.setRepo(URL(fileURLWithPath: "/path/to/repo"))
-ReviewSession.shared.toggle("App.swift")
-ReviewSession.shared.isReviewed("App.swift")            // true
-ReviewSession.shared.reviewedCount(in: ["App.swift"])   // 1
+let repo = URL(fileURLWithPath: "/path/to/repo")
+ReviewSession.shared.toggle("App.swift", repo: repo)
+ReviewSession.shared.isReviewed("App.swift", repo: repo)            // true
+ReviewSession.shared.reviewedCount(in: ["App.swift"], repo: repo)   // 1
 
 // After the change set moves on, drop stale entries; then clear the session.
-ReviewSession.shared.prune(to: ["App.swift"])
-ReviewSession.shared.prune(to: [])                      // no-op: a stash or branch hop, the marks stay
-ReviewSession.shared.reset()
+ReviewSession.shared.prune(to: ["App.swift"], repo: repo)
+ReviewSession.shared.prune(to: [], repo: repo)                      // no-op: a stash or branch hop, the marks stay
+ReviewSession.shared.reset(repo: repo)
 
 // Stamp a mark with the content it reviewed, and it answers only for that content.
-ReviewSession.shared.markReviewed("App.swift", stamp: blobHash)
-ReviewSession.shared.isReviewed("App.swift", stamp: blobHash)      // true
-ReviewSession.shared.isReviewed("App.swift", stamp: editedHash)    // false: the agent edited it again
-ReviewSession.shared.isReviewed("App.swift")                       // false: a stamped mark, an unstamped question
-ReviewSession.shared.reviewedCount(in: paths) { stampOf($0) }      // N of M, per path's stamp
+ReviewSession.shared.markReviewed("App.swift", stamp: blobHash, repo: repo)
+ReviewSession.shared.isReviewed("App.swift", stamp: blobHash, repo: repo)      // true
+ReviewSession.shared.isReviewed("App.swift", stamp: editedHash, repo: repo)    // false: the agent edited it again
+ReviewSession.shared.isReviewed("App.swift", repo: repo)                       // false: a stamped mark, an unstamped question
+ReviewSession.shared.reviewedCount(in: paths, repo: repo) { stampOf($0) }      // N of M, per path's stamp
 ```
 
 ### Turn checkpoints
@@ -91,7 +91,6 @@ store.diffRange(forTurn: turn.id, repo: repoURL)        // (from, to): `to` is t
                                                         // of the SAME session, nil = working tree
 store.repo(forTurn: turn.id)                            // which repository holds it
 store.reset(repo: repoURL)                              // the repository's commits are gone
-store.setRepo(repoURL)                                  // names a current repo for the calls without one
 
 // Which turn each line appeared during. The snapshots are a timeline, not an author: the
 // person's own edits in a turn's span count toward it. Another agent's turn is named beside

@@ -66,3 +66,8 @@ throwaway `UserDefaults` suite through the new `ReviewSession(defaults:)` initia
   removed-line skip, the diff budget, content reuse, the unshared count, the line cap, finished and
   earliest sessions, pre-watch lines, the own session beside). A whole-file rewrite measured 1.75 s
   (10k lines) / 6.9 s (20k) per step through the line diff; past the budget it is matched by content.
+- 23 Oct 2026 — no "current repository" any more: every `ReviewSession` and `TurnCheckpointStore` call names its
+  repository (`setRepo`, the repo-less `checkpoints` / `checkpoint(forTurn:)` / `hasCheckpoint(forTurn:)` /
+  `diffRange(forTurn:)` / `record(_:)` / `reset()` removed), because Sidewatch gains windows on different repositories
+  at once and a shared current repo would flip between them. Two tests that only made sense with one (prefers the
+  current repo; record with no repo) removed; mutant: marks read from any repository — 2 failures.

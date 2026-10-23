@@ -34,102 +34,99 @@ final class ReviewSessionStampTests: XCTestCase {
 
     private func session() -> ReviewSession {
         let s = ReviewSession(defaults: defaults)
-        s.setRepo(repo)
         return s
     }
 
     func testAMarkAnswersOnlyForTheStampItWasMadeWith() {
         let s = session()
-        s.markReviewed("App.swift", stamp: "blob-1")
-        XCTAssertTrue(s.isReviewed("App.swift", stamp: "blob-1"))
-        XCTAssertFalse(s.isReviewed("App.swift", stamp: "blob-2"), "the agent edited the file again")
-        XCTAssertFalse(s.isReviewed("App.swift", stamp: nil), "a stamped mark never answers an unstamped question")
-        XCTAssertFalse(s.isReviewed("App.swift"))
+        s.markReviewed("App.swift", stamp: "blob-1", repo: repo)
+        XCTAssertTrue(s.isReviewed("App.swift", stamp: "blob-1", repo: repo))
+        XCTAssertFalse(s.isReviewed("App.swift", stamp: "blob-2", repo: repo), "the agent edited the file again")
+        XCTAssertFalse(s.isReviewed("App.swift", stamp: nil, repo: repo), "a stamped mark never answers an unstamped question")
+        XCTAssertFalse(s.isReviewed("App.swift", repo: repo))
 
-        s.markReviewed("Other.swift", stamp: nil)
-        XCTAssertTrue(s.isReviewed("Other.swift", stamp: nil))
-        XCTAssertTrue(s.isReviewed("Other.swift"))
-        XCTAssertFalse(s.isReviewed("Other.swift", stamp: "blob-1"), "an unstamped mark never answers a stamped question")
-        XCTAssertFalse(s.isReviewed("Missing.swift", stamp: nil))
+        s.markReviewed("Other.swift", stamp: nil, repo: repo)
+        XCTAssertTrue(s.isReviewed("Other.swift", stamp: nil, repo: repo))
+        XCTAssertTrue(s.isReviewed("Other.swift", repo: repo))
+        XCTAssertFalse(s.isReviewed("Other.swift", stamp: "blob-1", repo: repo), "an unstamped mark never answers a stamped question")
+        XCTAssertFalse(s.isReviewed("Missing.swift", stamp: nil, repo: repo))
     }
 
     func testReMarkingWithANewStampReplacesTheOldOneAndFiresOnlyOnAChange() {
         let s = session()
         var fired = 0
         s.onChange = { fired += 1 }
-        s.markReviewed("App.swift", stamp: "blob-1")
-        s.markReviewed("App.swift", stamp: "blob-1")  // same content → silent
+        s.markReviewed("App.swift", stamp: "blob-1", repo: repo)
+        s.markReviewed("App.swift", stamp: "blob-1", repo: repo)  // same content → silent
         XCTAssertEqual(fired, 1)
-        s.markReviewed("App.swift", stamp: "blob-2")  // re-reviewed after an edit → fires
+        s.markReviewed("App.swift", stamp: "blob-2", repo: repo)  // re-reviewed after an edit → fires
         XCTAssertEqual(fired, 2)
-        XCTAssertTrue(s.isReviewed("App.swift", stamp: "blob-2"))
-        XCTAssertFalse(s.isReviewed("App.swift", stamp: "blob-1"))
+        XCTAssertTrue(s.isReviewed("App.swift", stamp: "blob-2", repo: repo))
+        XCTAssertFalse(s.isReviewed("App.swift", stamp: "blob-1", repo: repo))
     }
 
     func testToggleWithAStampMarksAStaleFileRatherThanClearingIt() {
         let s = session()
-        s.markReviewed("App.swift", stamp: "blob-1")
-        s.toggle("App.swift", stamp: "blob-2")
-        XCTAssertTrue(s.isReviewed("App.swift", stamp: "blob-2"), "not reviewed as blob-2, so the flip marks it")
-        s.toggle("App.swift", stamp: "blob-2")
-        XCTAssertFalse(s.isReviewed("App.swift", stamp: "blob-2"))
-        XCTAssertFalse(s.isReviewed("App.swift", stamp: "blob-1"), "the flip removed the mark")
+        s.markReviewed("App.swift", stamp: "blob-1", repo: repo)
+        s.toggle("App.swift", stamp: "blob-2", repo: repo)
+        XCTAssertTrue(s.isReviewed("App.swift", stamp: "blob-2", repo: repo), "not reviewed as blob-2, so the flip marks it")
+        s.toggle("App.swift", stamp: "blob-2", repo: repo)
+        XCTAssertFalse(s.isReviewed("App.swift", stamp: "blob-2", repo: repo))
+        XCTAssertFalse(s.isReviewed("App.swift", stamp: "blob-1", repo: repo), "the flip removed the mark")
     }
 
     func testReviewedCountTakesEachPathsStamp() {
         let s = session()
-        s.markReviewed("a.swift", stamp: "a1")
-        s.markReviewed("b.swift", stamp: "b1")
-        s.markReviewed("c.swift", stamp: nil)
+        s.markReviewed("a.swift", stamp: "a1", repo: repo)
+        s.markReviewed("b.swift", stamp: "b1", repo: repo)
+        s.markReviewed("c.swift", stamp: nil, repo: repo)
         let stamps = ["a.swift": "a1", "b.swift": "b2"]
         XCTAssertEqual(
-            s.reviewedCount(in: ["a.swift", "b.swift", "c.swift"]) { stamps[$0] }, 2,
+            s.reviewedCount(in: ["a.swift", "b.swift", "c.swift"], repo: repo) { stamps[$0] }, 2,
             "a.swift matches; b.swift was edited; c.swift is unstamped and asked without a stamp")
         XCTAssertEqual(
-            s.reviewedCount(in: ["a.swift", "b.swift", "c.swift"]), 1,
+            s.reviewedCount(in: ["a.swift", "b.swift", "c.swift"], repo: repo), 1,
             "the unstamped count is the stamped count with nil stamps: only c.swift")
     }
 
     func testPruneToAnEmptySetKeepsEveryMark() {
         let s = session()
-        s.markReviewed("keep.swift", stamp: "k1")
-        s.markReviewed("other.swift")
+        s.markReviewed("keep.swift", stamp: "k1", repo: repo)
+        s.markReviewed("other.swift", repo: repo)
         var fired = 0
         s.onChange = { fired += 1 }
-        s.prune(to: [])  // a stash or a branch hop: no changes at all, not a review outcome
+        s.prune(to: [], repo: repo)  // a stash or a branch hop: no changes at all, not a review outcome
         XCTAssertEqual(fired, 0)
-        XCTAssertTrue(s.isReviewed("keep.swift", stamp: "k1"))
-        XCTAssertTrue(s.isReviewed("other.swift"))
+        XCTAssertTrue(s.isReviewed("keep.swift", stamp: "k1", repo: repo))
+        XCTAssertTrue(s.isReviewed("other.swift", repo: repo))
     }
 
     func testPruneToANonEmptySetStillDropsAbsentPaths() {
         let s = session()
-        s.markReviewed("keep.swift", stamp: "k1")
-        s.markReviewed("gone.swift", stamp: "g1")
+        s.markReviewed("keep.swift", stamp: "k1", repo: repo)
+        s.markReviewed("gone.swift", stamp: "g1", repo: repo)
         var fired = 0
         s.onChange = { fired += 1 }
-        s.prune(to: ["keep.swift", "new.swift"])
+        s.prune(to: ["keep.swift", "new.swift"], repo: repo)
         XCTAssertEqual(fired, 1)
-        XCTAssertTrue(s.isReviewed("keep.swift", stamp: "k1"))
-        XCTAssertFalse(s.isReviewed("gone.swift", stamp: "g1"))
-        s.prune(to: ["keep.swift"])  // nothing dropped → silent
+        XCTAssertTrue(s.isReviewed("keep.swift", stamp: "k1", repo: repo))
+        XCTAssertFalse(s.isReviewed("gone.swift", stamp: "g1", repo: repo))
+        s.prune(to: ["keep.swift"], repo: repo)  // nothing dropped → silent
         XCTAssertEqual(fired, 1)
     }
 
     func testStampsSurviveARelaunch() {
         let first = session()
-        first.markReviewed("stamped.swift", stamp: "blob-7")
-        first.markReviewed("plain.swift")
-        first.setRepo(nil)
-        first.markReviewed("elsewhere.swift", stamp: "e1")
+        first.markReviewed("stamped.swift", stamp: "blob-7", repo: repo)
+        first.markReviewed("plain.swift", repo: repo)
+        first.markReviewed("elsewhere.swift", stamp: "e1", repo: nil)
 
         let second = session()  // a fresh session over the same defaults, as after a relaunch
-        XCTAssertTrue(second.isReviewed("stamped.swift", stamp: "blob-7"))
-        XCTAssertFalse(second.isReviewed("stamped.swift", stamp: nil), "the stamp came back, not just the path")
-        XCTAssertTrue(second.isReviewed("plain.swift", stamp: nil))
-        XCTAssertFalse(second.isReviewed("plain.swift", stamp: ""), "an unstamped mark is not an empty stamp")
-        second.setRepo(nil)
-        XCTAssertTrue(second.isReviewed("elsewhere.swift", stamp: "e1"))
+        XCTAssertTrue(second.isReviewed("stamped.swift", stamp: "blob-7", repo: repo))
+        XCTAssertFalse(second.isReviewed("stamped.swift", stamp: nil, repo: repo), "the stamp came back, not just the path")
+        XCTAssertTrue(second.isReviewed("plain.swift", stamp: nil, repo: repo))
+        XCTAssertFalse(second.isReviewed("plain.swift", stamp: "", repo: repo), "an unstamped mark is not an empty stamp")
+        XCTAssertTrue(second.isReviewed("elsewhere.swift", stamp: "e1", repo: nil))
 
         let stored = defaults.dictionary(forKey: "sidewatch.reviewSession") as? [String: [String: String]]
         XCTAssertEqual(stored?[repo.path], ["stamped.swift": "blob-7", "plain.swift": ""])
@@ -138,6 +135,6 @@ final class ReviewSessionStampTests: XCTestCase {
     func testTheOldPathListFormatIsNotRead() {
         defaults.set([repo.path: ["old.swift"]], forKey: "sidewatch.reviewSession")
         let s = session()
-        XCTAssertFalse(s.isReviewed("old.swift"), "the pre-launch list form starts the marks empty, no migration")
+        XCTAssertFalse(s.isReviewed("old.swift", repo: repo), "the pre-launch list form starts the marks empty, no migration")
     }
 }
