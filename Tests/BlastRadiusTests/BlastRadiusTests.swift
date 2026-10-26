@@ -62,6 +62,22 @@ final class BlastRadiusTests: XCTestCase {
         XCTAssertTrue(impact.callers.allSatisfy { !$0.isTest })
     }
 
+    func testAFolderTheHostCallsNoiseIsNotSearched() throws {
+        let root = try makeProject()
+        let cache = root.appendingPathComponent("Library/PackageCache")
+        try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
+        try "func viaPackage() {\n    foo()\n}\n".write(
+            to: cache.appendingPathComponent("Package.swift"), atomically: true, encoding: .utf8)
+        BlastRadius.skipsFolder = { $0.lastPathComponent == "Library" }
+        defer { BlastRadius.skipsFolder = nil }
+        let impacts = BlastRadius.analyze(file: root.appendingPathComponent("changed.swift"), root: root, changedLines: [2]) { _, _ in
+            ["foo"]
+        }
+        let impact = try XCTUnwrap(impacts.first)
+        XCTAssertTrue(impact.callers.contains { $0.file == "caller.swift" })
+        XCTAssertFalse(impact.callers.contains { $0.file.hasPrefix("Library/") }, "a folder the host calls noise is not walked")
+    }
+
     func testARootThatIsALinkIsSearchedToo() throws {
         let real = try makeProject()
         let link = real.deletingLastPathComponent().appendingPathComponent("blast-link-\(UUID().uuidString)")

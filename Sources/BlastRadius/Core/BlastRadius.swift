@@ -40,6 +40,15 @@ public enum BlastRadius {
     private static let lock = NSLock()
     private nonisolated(unsafe) static var storedSkip: Set<String> = defaultSkip
 
+    /// A host-supplied test of one folder on top of ``skip``, for a folder that is noise only where it
+    /// stands — a game engine's cache beside its project's marker (FileTools' `EngineCaches.isCache`).
+    /// A folder it answers true for is not walked; nil skips nothing more. Lock-guarded like ``skip``.
+    public static var skipsFolder: (@Sendable (URL) -> Bool)? {
+        get { lock.lock(); defer { lock.unlock() }; return storedSkipsFolder }
+        set { lock.lock(); defer { lock.unlock() }; storedSkipsFolder = newValue }
+    }
+    private nonisolated(unsafe) static var storedSkipsFolder: (@Sendable (URL) -> Bool)?
+
     /// Source file extensions searched for usages.
     public static let exts: Set<String> = [
         "swift", "ts", "tsx", "js", "jsx", "mjs", "py", "rb", "php", "go", "rs",
@@ -210,13 +219,14 @@ public enum BlastRadius {
         return false
     }
 
-    /// Walks `root` for source files (by ``exts``), pruning ``skip`` directories
-    /// and capping the walk at 6000 files.
+    /// Walks `root` for source files (by ``exts``), pruning ``skip`` directories and those
+    /// ``skipsFolder`` names, and capping the walk at 6000 files.
     private static func sourceFiles(_ root: URL) -> [URL] {
         var out: [URL] = []
+        let skip = skip, skipsFolder = skipsFolder  // read once: one walk, one answer
         // `walk`: the root may itself be a symbolic link, which `enumerator(at:)` lists nothing under.
         FileManager.default.walk(root) { url in
-            if skip.contains(url.lastPathComponent) { return .skipDescendants }
+            if skip.contains(url.lastPathComponent) || skipsFolder?(url) == true { return .skipDescendants }
             if exts.contains(url.pathExtension.lowercased()) { out.append(url) }
             return out.count > 6000 ? .stop : .next
         }

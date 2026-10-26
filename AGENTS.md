@@ -32,7 +32,7 @@ its timeline) as extensions in its own target.
 ## BlastRadius — `Sources/BlastRadius`
 
 ### Module map
-- `Core/` — the engine: BlastRadius
+- `Core/` — the engine: BlastRadius (`skip` names and `skipsFolder`, a host's test for a folder that is noise only where it stands)
 - `Models/` — value types — the shape of a thing, nothing else: BlastLocation, SymbolImpact
 
 ## Rules
