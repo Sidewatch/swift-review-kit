@@ -4,13 +4,13 @@
 
 ## Features
 
-- 💥 **Change impact** — `BlastRadius.analyze(file:root:changedLines:enclosingSymbol:)` maps changed lines → their enclosing symbols → one `SymbolImpact` per symbol with any project-wide usages
-- 🧪 **Callers vs. tests** — every hit is a `BlastLocation` (file, line, trimmed text) split into `callers` and `tests`, so you see coverage at a glance; test files are classified by whole path components and filename word boundaries (never raw substrings, so "latest" and "InspectorPanel" can't misfire)
-- 🔌 **Parser-agnostic** — the "which symbol encloses this offset" step is the injected `enclosingSymbol` closure; wire it to tree-sitter breadcrumbs, ctags, an LSP, or anything else
-- 🧭 **Whole-word matching** — word-boundary anchored search, so `oo` never matches inside `foo`; fully non-word names (operators like `==`) fall back to a literal search
-- 🚫 **Noise-aware** — prunes `BlastRadius.skip` directories (settable; defaults to `BlastRadius.defaultSkip` — `node_modules`, `.build`, `Pods`, `__pycache__`, …), searches only `BlastRadius.exts` source extensions, and caps work (6000 files, 500 KB per file, 300 hits per symbol) for responsiveness
-- 🪶 **Zero dependencies** — Foundation only
-- 🧪 **Fully tested** — unit tests against throwaway on-disk projects, including test-file classification, operator symbols, and Unicode line-separator edge cases
+- **Change impact** — `BlastRadius.analyze(file:root:changedLines:enclosingSymbol:)` maps changed lines → their enclosing symbols → one `SymbolImpact` per symbol with any project-wide usages
+- **Callers vs. tests** — every hit is a `BlastLocation` (file, line, trimmed text) split into `callers` and `tests`, so you see coverage at a glance; test files are classified by whole path components and filename word boundaries (never raw substrings, so "latest" and "InspectorPanel" can't misfire)
+- **Parser-agnostic** — the "which symbol encloses this offset" step is the injected `enclosingSymbol` closure; wire it to tree-sitter breadcrumbs, ctags, an LSP, or anything else
+- **Whole-word matching** — word-boundary anchored search, so `oo` never matches inside `foo`; fully non-word names (operators like `==`) fall back to a literal search
+- **Noise-aware** — prunes `BlastRadius.skip` directories (settable; defaults to `BlastRadius.defaultSkip` — `node_modules`, `.build`, `Pods`, `__pycache__`, …), searches only `BlastRadius.exts` source extensions, and caps work (6000 files, 500 KB per file, 300 hits per symbol) for responsiveness
+- **Zero dependencies** — Foundation only
+- **Fully tested** — unit tests against throwaway on-disk projects, including test-file classification, operator symbols, and Unicode line-separator edge cases
 
 ## Requirements
 
@@ -52,7 +52,7 @@ for impact in impacts {
 }
 ```
 
-> ⚠️ It's a deterministic **text search**, not a semantic call graph — it can match a same-named symbol in an unrelated file and doesn't follow imports/scoping. That's the trade for being fast and language-agnostic. `analyze` walks and reads the whole project synchronously — run it off the main thread.
+> **Note:** It's a deterministic **text search**, not a semantic call graph — it can match a same-named symbol in an unrelated file and doesn't follow imports/scoping. That's the trade for being fast and language-agnostic. `analyze` walks and reads the whole project synchronously — run it off the main thread.
 
 ## For agents
 

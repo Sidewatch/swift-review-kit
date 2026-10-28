@@ -4,15 +4,15 @@ A small model layer for a code-review pass over a set of changed files — colle
 
 ## Features
 
-- 📝 **Line-pinned comments** — `ReviewComment` carries a `file`, `line`, `severity`, and `note`
-- 🚦 **Severities** — `ReviewSeverity`: `must-fix`, `suggestion`, `question` (the raw value is the markdown label)
-- 📤 **Markdown emit** — `ReviewDraft.markdown()` groups by file, sorts by line, and indents multi-line notes so they stay inside their bullet
-- ✅ **Reviewed set** — `ReviewSession.toggle(_:)` / `markReviewed(_:_:)` / `reviewedCount(in:)` to walk a change set to completion (N of M)
+- **Line-pinned comments** — `ReviewComment` carries a `file`, `line`, `severity`, and `note`
+- **Severities** — `ReviewSeverity`: `must-fix`, `suggestion`, `question` (the raw value is the markdown label)
+- **Markdown emit** — `ReviewDraft.markdown()` groups by file, sorts by line, and indents multi-line notes so they stay inside their bullet
+- **Reviewed set** — `ReviewSession.toggle(_:)` / `markReviewed(_:_:)` / `reviewedCount(in:)` to walk a change set to completion (N of M)
 - **Content stamps** — `markReviewed(_:stamp:)` / `isReviewed(_:stamp:)` / `toggle(_:stamp:)` / `reviewedCount(in:stamp:)` tie a mark to the content it was made against (the working-tree blob hash you compute): the agent editing the file again changes the stamp and the file is no longer reviewed. The unstamped calls are the stamped ones with a nil stamp, so a stamped mark never answers an unstamped question and an unstamped mark never answers a stamped one
-- 💾 **Per-repo persistence** — every `ReviewSession` call names its repository (two windows may show two at once); it survives relaunch via `UserDefaults`, stamps included
-- 🧹 **Prune** — `ReviewSession.prune(to:)` drops reviewed entries no longer in the live change set; an empty set is a no-op, since a snapshot with no changes at all is a stash or a checkout away from the branch, not a review outcome
-- 🪶 **Small** — Foundation plus swift-foundation-extensions (FoundationExtensions, ProcessRunner)
-- 🍎 **Cross-platform** — iOS, macOS, tvOS, watchOS, visionOS
+- **Per-repo persistence** — every `ReviewSession` call names its repository (two windows may show two at once); it survives relaunch via `UserDefaults`, stamps included
+- **Prune** — `ReviewSession.prune(to:)` drops reviewed entries no longer in the live change set; an empty set is a no-op, since a snapshot with no changes at all is a stash or a checkout away from the branch, not a review outcome
+- **Small** — Foundation plus swift-foundation-extensions (FoundationExtensions, ProcessRunner)
+- **Cross-platform** — iOS, macOS, tvOS, watchOS, visionOS
 
 ## Requirements
 
