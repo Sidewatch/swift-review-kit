@@ -12,6 +12,7 @@ A small model layer for a code-review pass over a set of changed files — colle
 - **Per-repo persistence** — every `ReviewSession` call names its repository (two windows may show two at once); it survives relaunch via `UserDefaults`, stamps included
 - **Prune** — `ReviewSession.prune(to:)` drops reviewed entries no longer in the live change set; an empty set is a no-op, since a snapshot with no changes at all is a stash or a checkout away from the branch, not a review outcome
 - **Notes that follow their code** — a note keeps the text of its line (`ReviewComment.quoted`); `ReviewDraft.reanchor(inFile:lines:)` moves it to where that text now is (`LineAnchor.relocate`: the nearest matching line, trailing white space aside) and marks it `isOutdated` when the text is gone. `sendable` and `markdown()` leave outdated notes out; `clearSent()` removes only what was sent. `DiffReviewComment.isOutdated` and `DiffLineLocator.visibleIndex(ofText:side:near:in:)` do the same for remarks on a diff
+- **Snapshots at the prompt** — `PromptSnapshots.hold(commit:session:repo:)` / `take(session:repo:)`: a snapshot taken when a prompt was sent opens the turn a host notices later, once, while it is fresh
 - **Small** — Foundation plus swift-foundation-extensions (FoundationExtensions, ProcessRunner)
 - **Cross-platform** — iOS, macOS, tvOS, watchOS, visionOS
 
