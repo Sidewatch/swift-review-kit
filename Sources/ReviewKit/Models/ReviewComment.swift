@@ -38,6 +38,27 @@ public struct ReviewComment {
     /// The reviewer's message.
     public var note: String
 
+    /// True once the file changed and the source the note quotes (``hunk``) is nowhere in it any
+    /// more: what the note was about has been rewritten or removed. It is kept for the person to
+    /// read, marks no line, and is left out of what is sent.
+    public var isOutdated = false
+
+    /// A copy of this comment placed where its quoted source now stands in `lines` (the file's
+    /// lines as they are now): moved with it when the code moved, marked ``isOutdated`` when the
+    /// code is gone, and no longer outdated when it is back. A note that quotes nothing cannot be
+    /// followed and is returned as it is.
+    public func reanchored(in lines: [String]) -> ReviewComment {
+        guard let hunk, !hunk.isEmpty else { return self }
+        var moved = self
+        guard let start = LineAnchor.relocate(quoted: hunk.components(separatedBy: "\n"), from: line, in: lines) else {
+            moved.isOutdated = true
+            return moved
+        }
+        moved = ReviewComment(
+            file: file, line: start, endLine: endLine.map { $0 + (start - line) }, hunk: hunk, severity: severity, note: note)
+        return moved
+    }
+
     /// A copy of this comment with its line numbers moved to follow a text edit: at or above
     /// the edit → unchanged; below the replaced span → shifted by `lineDelta`; INSIDE the span
     /// → clamped to `editLine`. Unlike a diff band (which a git refresh restores), a note is
@@ -53,9 +74,11 @@ public struct ReviewComment {
         let newLine = moved(line)
         let newEnd = endLine.map { max(moved($0), newLine) }
         guard newLine != line || newEnd != endLine else { return self }
-        return ReviewComment(
+        var moved = ReviewComment(
             file: file, line: newLine, endLine: newEnd, hunk: hunk,
             severity: severity, note: note)
+        moved.isOutdated = isOutdated
+        return moved
     }
 
     /// Creates a single-line review comment carrying no source.

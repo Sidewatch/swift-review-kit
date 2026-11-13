@@ -25,6 +25,9 @@ public struct DiffReviewComment: Equatable, Sendable {
     public let quoted: String
     /// The reviewer's remark.
     public let text: String
+    /// True once the diff changed and the quoted line is no longer in it: the remark is kept to be
+    /// read and is left out of what is sent.
+    public var isOutdated = false
 
     /// A remark on one diff line, or on the whole file when `line` is nil.
     public init(path: String, line: Int?, side: String, quoted: String, text: String) {

@@ -83,8 +83,36 @@ public final class ReviewDraft {
     /// - Returns: The set of lines holding a note.
     public func noteLines(inFile file: String) -> Set<Int> {
         var lines = Set<Int>()
-        for c in comments where c.file == file { lines.insert(c.line) }
+        for c in comments where c.file == file && !c.isOutdated { lines.insert(c.line) }
         return lines
+    }
+
+    /// The file `file` changed on disk and `lines` is what it holds now: every note on it that
+    /// quotes its source follows that source to where it stands, or is marked outdated when it is
+    /// gone (``ReviewComment/reanchored(in:)``). ``onChange`` fires only when a note moved or its
+    /// outdated mark changed.
+    public func reanchor(inFile file: String, lines: [String]) {
+        var changed = false
+        comments = comments.map { c in
+            guard c.file == file else { return c }
+            let next = c.reanchored(in: lines)
+            if next.line != c.line || next.endLine != c.endLine || next.isOutdated != c.isOutdated { changed = true }
+            return next
+        }
+        if changed { self.changed() }
+    }
+
+    /// The notes that would be sent: every one that is not outdated.
+    public var sendable: [ReviewComment] { comments.filter { !$0.isOutdated } }
+    /// How many notes are outdated, and so kept back from a send.
+    public var outdatedCount: Int { comments.count - sendable.count }
+
+    /// Removes the notes a send carried (``sendable``) and keeps the outdated ones, which were not
+    /// sent, for the person to read or remove.
+    public func clearSent() {
+        guard comments.contains(where: { !$0.isOutdated }) else { return }
+        comments.removeAll { !$0.isOutdated }
+        changed()
     }
 
     /// Removes every comment and notifies ``onChange``.
@@ -95,8 +123,11 @@ public final class ReviewDraft {
     /// A note that carries a ``ReviewComment/hunk`` quotes it as a fenced block indented into
     /// the list item, so the agent sees the exact source the note is about.
     ///
-    /// - Returns: A markdown string, or an empty string when there are no comments.
+    /// An outdated note is left out: the lines it names and quotes are no longer in the file.
+    ///
+    /// - Returns: A markdown string, or an empty string when there is nothing to send.
     public func markdown() -> String {
+        let comments = sendable
         guard !comments.isEmpty else { return "" }
         var byFile: [String: [ReviewComment]] = [:]
         for c in comments { byFile[c.file, default: []].append(c) }

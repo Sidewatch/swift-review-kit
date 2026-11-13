@@ -14,7 +14,9 @@ import Foundation
 public enum DiffReviewMessage {
     /// Numbered, one file:line reference per comment, the quoted line for orientation, then
     /// the remark. Empty for no comments.
-    public static func format(_ comments: [DiffReviewComment], repoName: String) -> String {
+    public static func format(_ all: [DiffReviewComment], repoName: String) -> String {
+        // A remark whose line has since changed is not sent: the reference it carries is to code that is gone.
+        let comments = all.filter { !$0.isOutdated }
         guard !comments.isEmpty else { return "" }
         var out = "Review comments (\(comments.count)) on \(repoName) — please address each:\n"
         for (i, c) in comments.enumerated() {

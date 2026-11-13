@@ -61,6 +61,19 @@ public enum DiffLineLocator {
         }
     }
 
+    /// Which rendered diff line (0-based, banner excluded) now shows a line that read `text` on
+    /// `side` ("+", "-" or " "): the one nearest `oldIndex`, compared without trailing white space.
+    /// Nil when the diff no longer shows such a line. How a remark made on a diff line finds its
+    /// row again after the diff is read anew.
+    public static func visibleIndex(ofText text: String, side: String, near oldIndex: Int, in chunk: [String]) -> Int? {
+        let wanted = LineAnchor.trimmedEnd(text)
+        let matches = locateAll(chunk: chunk).enumerated().compactMap { index, located -> Int? in
+            guard let located, located.side == side, LineAnchor.trimmedEnd(located.text) == wanted else { return nil }
+            return index
+        }
+        return matches.min { (abs($0 - oldIndex), $0) < (abs($1 - oldIndex), $1) }
+    }
+
     /// Every rendered diff line's file line in one pass, aligned with ``visibleLines(in:)``: the
     /// new file's line for an added or context line, the old file's for a removed one, nil for a
     /// hunk header, a binary note or a "\ No newline" marker. What a diff view numbers its
