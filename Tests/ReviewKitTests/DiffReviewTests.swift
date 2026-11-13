@@ -88,4 +88,21 @@ final class DiffReviewTests: XCTestCase {
         XCTAssertEqual(DiffReviewMessage.format([], repoName: "demo"), "")
     }
 
+    func testAFileLineFindsItsRenderedRowOnTheSideItIsOn() {
+        let chunk = [
+            "diff --git a/f.txt b/f.txt", "--- a/f.txt", "+++ b/f.txt",
+            "@@ -10,4 +10,5 @@", " ten", "-eleven", "+ELEVEN", "+eleven and a half", " twelve", " thirteen",
+        ]
+        // Rendered rows: 0 the hunk header, 1 ten, 2 -eleven, 3 +ELEVEN, 4 +eleven and a half, 5 twelve, 6 thirteen.
+        XCTAssertEqual(DiffLineLocator.visibleIndex(ofLine: 10, newSide: true, in: chunk), 1)
+        XCTAssertEqual(DiffLineLocator.visibleIndex(ofLine: 11, newSide: true, in: chunk), 3, "new line 11 is the added one")
+        XCTAssertEqual(DiffLineLocator.visibleIndex(ofLine: 11, newSide: false, in: chunk), 2, "old line 11 is the removed one")
+        XCTAssertEqual(DiffLineLocator.visibleIndex(ofLine: 13, newSide: true, in: chunk), 5, "context below shifts by the added line")
+        XCTAssertNil(DiffLineLocator.visibleIndex(ofLine: 40, newSide: true, in: chunk), "a line the diff does not show")
+        XCTAssertNil(DiffLineLocator.visibleIndex(ofLine: 12, newSide: false, in: chunk), "a context line is not a removed one")
+        for index in 1...6 {
+            let located = DiffLineLocator.locate(chunk: chunk, visibleIndex: index)!
+            XCTAssertEqual(DiffLineLocator.visibleIndex(ofLine: located.line, newSide: located.side != "-", in: chunk), index)
+        }
+    }
 }

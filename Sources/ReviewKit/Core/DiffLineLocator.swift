@@ -50,6 +50,17 @@ public enum DiffLineLocator {
         return all.indices.contains(visibleIndex) ? all[visibleIndex] : nil
     }
 
+    /// Which rendered diff line (0-based, banner excluded) shows file line `line`: on the new side an
+    /// added or context line, on the old side a removed one. Nil when the diff does not show that
+    /// line. The reverse of ``locate(chunk:visibleIndex:)``: how a remark someone else left on
+    /// `path:line` finds its row.
+    public static func visibleIndex(ofLine line: Int, newSide: Bool, in chunk: [String]) -> Int? {
+        locateAll(chunk: chunk).firstIndex { located in
+            guard let located, located.line == line else { return false }
+            return newSide ? located.side != "-" : located.side == "-"
+        }
+    }
+
     /// Every rendered diff line's file line in one pass, aligned with ``visibleLines(in:)``: the
     /// new file's line for an added or context line, the old file's for a removed one, nil for a
     /// hunk header, a binary note or a "\ No newline" marker. What a diff view numbers its

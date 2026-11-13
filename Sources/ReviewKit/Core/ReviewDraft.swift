@@ -18,8 +18,32 @@ import FoundationExtensions
 @MainActor
 public final class ReviewDraft {
 
-    /// The shared, process-wide draft.
+    /// The draft of no project: notes made with no folder open.
     public static let shared = ReviewDraft()
+
+    /// One draft per project, by the project folder's path. Notes name their file relative to their
+    /// project, so one queue for every project would count a project's notes in another's window,
+    /// mark the other's `README.md`, and send them with its batch.
+    private static var byProject: [String: ReviewDraft] = [:]
+
+    /// The draft of the project at `path`; ``shared`` for nil or an empty path. The same draft every time.
+    public static func draft(forProject path: String?) -> ReviewDraft {
+        guard let path, !path.isEmpty else { return shared }
+        if let existing = byProject[path] { return existing }
+        let made = ReviewDraft()
+        byProject[path] = made
+        return made
+    }
+
+    /// Fired with the draft whenever ANY draft changes, after its own ``onChange``: one place for a
+    /// host with several windows to hear every project's queue.
+    public static var onAnyChange: ((ReviewDraft) -> Void)?
+
+    /// Tells this draft's listener and the listener for every draft.
+    private func changed() {
+        onChange?()
+        Self.onAnyChange?(self)
+    }
 
     /// The accumulated comments, in the order they were added.
     public private(set) var comments: [ReviewComment] = []
@@ -30,10 +54,10 @@ public final class ReviewDraft {
     private init() {}
 
     /// Appends a comment and notifies ``onChange``.
-    public func add(_ c: ReviewComment) { comments.append(c); onChange?() }
+    public func add(_ c: ReviewComment) { comments.append(c); changed() }
 
     /// Removes the comment at index `i` (a no-op if out of range) and notifies ``onChange``.
-    public func remove(at i: Int) { guard comments.indices.contains(i) else { return }; comments.remove(at: i); onChange?() }
+    public func remove(at i: Int) { guard comments.indices.contains(i) else { return }; comments.remove(at: i); changed() }
 
     /// Moves every note in `file` to follow a text edit, so a note stays on the code it was
     /// written about after lines are inserted or deleted above it. The rule is
@@ -49,7 +73,7 @@ public final class ReviewDraft {
             if next.line != c.line || next.endLine != c.endLine { moved = true }
             return next
         }
-        if moved { onChange?() }
+        if moved { changed() }
     }
 
     /// The 1-based lines in `file` that carry at least one note — what a gutter draws a marker
@@ -64,7 +88,7 @@ public final class ReviewDraft {
     }
 
     /// Removes every comment and notifies ``onChange``.
-    public func clear() { comments.removeAll(); onChange?() }
+    public func clear() { comments.removeAll(); changed() }
 
     /// The comments grouped by file, each file's notes sorted by line — the block sent to the agent.
     ///

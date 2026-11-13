@@ -33,6 +33,24 @@ final class ReviewKitTests: XCTestCase {
 
     // MARK: - ReviewDraft
 
+    func testEachProjectHasItsOwnDraftAndEveryChangeIsHeardInOnePlace() {
+        let alpha = ReviewDraft.draft(forProject: "/projects/alpha"), beta = ReviewDraft.draft(forProject: "/projects/beta")
+        defer { alpha.clear(); beta.clear(); ReviewDraft.onAnyChange = nil }
+        XCTAssertTrue(alpha !== beta)
+        XCTAssertTrue(alpha === ReviewDraft.draft(forProject: "/projects/alpha"), "the same draft every time")
+        XCTAssertTrue(ReviewDraft.draft(forProject: nil) === ReviewDraft.shared)
+        XCTAssertTrue(ReviewDraft.draft(forProject: "") === ReviewDraft.shared)
+        var heard: [ReviewDraft] = []
+        ReviewDraft.onAnyChange = { heard.append($0) }
+        alpha.add(ReviewComment(file: "README.md", line: 1, endLine: nil, hunk: nil, severity: .mustFix, note: "alpha"))
+        XCTAssertEqual(alpha.comments.count, 1)
+        XCTAssertTrue(beta.comments.isEmpty, "one project's note is not another's")
+        XCTAssertTrue(ReviewDraft.shared.comments.isEmpty)
+        XCTAssertTrue(beta.noteLines(inFile: "README.md").isEmpty, "nor a mark on the other's file of the same name")
+        beta.clear()
+        XCTAssertTrue(heard.count == 2 && heard[0] === alpha && heard[1] === beta, "each change names its draft")
+    }
+
     func testAddAppendsInOrder() {
         ReviewDraft.shared.add(ReviewComment(file: "a.swift", line: 1, severity: .mustFix, note: "one"))
         ReviewDraft.shared.add(ReviewComment(file: "b.swift", line: 2, severity: .question, note: "two"))

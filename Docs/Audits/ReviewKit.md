@@ -71,3 +71,4 @@ throwaway `UserDefaults` suite through the new `ReviewSession(defaults:)` initia
   `diffRange(forTurn:)` / `record(_:)` / `reset()` removed), because Sidewatch gains windows on different repositories
   at once and a shared current repo would flip between them. Two tests that only made sense with one (prefers the
   current repo; record with no repo) removed; mutant: marks read from any repository — 2 failures.
+- 13 Nov 2026 — `ReviewDraft.draft(forProject:)`: one queue per project (notes name their file relative to their project, so one queue counted a project's notes in another's window and sent them with its batch), and `onAnyChange` for a host with several windows. `DiffLineLocator.visibleIndex(ofLine:newSide:in:)`, the reverse of `locate`, for placing a remark someone else left on `path:line`. A test each (`ReviewKitTests`, `DiffReviewTests`).
